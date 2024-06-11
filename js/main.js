@@ -19,12 +19,13 @@ const game = new Phaser.Game(config);
 let player, cursors;
 
 function preload() {
-    this.load.image('player', 'assets/ChikBoy_run.png');
+    // Carregar spritesheet (cada frame tem 32x32 pixels)
+    this.load.spritesheet('player', 'assets/ChikBoy_run.png', { frameWidth: 32, frameHeight: 32 });
 }   
 
 function create() {
     // Player setup
-    player = this.physics.add.sprite(400, 300, 'player');
+    player = this.physics.add.sprite(400, 300, 'player').setScale(2);
     player.setCollideWorldBounds(true);
 
     // Input setup
@@ -35,39 +36,21 @@ function create() {
         player.rotation = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
     });
 
-    // Configurar as animações para os jogadores
+    // Configurar as animações para o jogador
     this.anims.create({
-        key: 'idle',
-        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 5 }),
-        frameRate: 3,
-        repeat: -1
-    });
-
-    /*this.anims.create({
         key: 'run',
-        frames: this.anims.generateFrameNumbers('playerB', { start: 0, end: 9 }),
+        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 9 }),
         frameRate: 10,
         repeat: -1
     });
 
-    this.anims.create({
-        key: 'idle2',
-        frames: this.anims.generateFrameNumbers('playerC', { start: 0, end: 5 }),
-        frameRate: 3,
-        repeat: -1
-    });
-
-    this.anims.create({
-        key: 'run2',
-        frames: this.anims.generateFrameNumbers('playerD', { start: 0, end: 9 }),
-        frameRate: 10,
-        repeat: -1
-    });*/
+    // Iniciar animação de corrida
+    player.anims.play('run');
 }
 
 function update() {
-// Player movement
-player.setVelocity(0);  // Reset velocity
+    // Player movement
+    player.setVelocity(0);  // Reset velocity
 
     if (cursors.left.isDown) {
         player.setVelocityX(-160);
@@ -80,6 +63,4 @@ player.setVelocity(0);  // Reset velocity
     } else if (cursors.down.isDown) {
         player.setVelocityY(160);
     }
-
-    
 }
