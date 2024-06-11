@@ -21,11 +21,11 @@ let enemy, taskComplete = false;
 let enemySound, taskSound;
 
 function preload() {
-    this.load.image('player', 'assets/player.png');
-    this.load.image('enemy', 'assets/enemy.png');
-    this.load.image('task', 'assets/task.png');
-    this.load.audio('enemySound', 'assets/enemySound.mp3');
-    this.load.audio('taskSound', 'assets/taskSound.mp3');
+    this.load.image('player', 'assets/poisson_dist.png');
+    //this.load.image('enemy', 'assets/enemy.png');
+    //this.load.image('task', 'assets/task.png');
+    //this.load.audio('enemySound', 'assets/enemySound.mp3');
+    //this.load.audio('taskSound', 'assets/taskSound.mp3');
 }
 
 function create() {
@@ -62,7 +62,8 @@ function create() {
 
 function update() {
     // Player movement
-    player.setVelocity(0);
+    player.setVelocity(0);  // Reset velocity
+
     if (cursors.left.isDown) {
         player.setVelocityX(-160);
     } else if (cursors.right.isDown) {
