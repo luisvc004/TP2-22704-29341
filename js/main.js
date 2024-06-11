@@ -16,37 +16,16 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-let player, flashlight, cursors;
-let enemy, taskComplete = false;
-let enemySound, taskSound;
+let player, cursors;
 
 function preload() {
     this.load.image('player', 'assets/poisson_dist.png');
-    //this.load.image('enemy', 'assets/enemy.png');
-    //this.load.image('task', 'assets/task.png');
-    //this.load.audio('enemySound', 'assets/enemySound.mp3');
-    //this.load.audio('taskSound', 'assets/taskSound.mp3');
 }
 
 function create() {
     // Player setup
     player = this.physics.add.sprite(400, 300, 'player');
     player.setCollideWorldBounds(true);
-
-    // Flashlight setup
-    flashlight = this.add.circle(player.x, player.y, 100).setAlpha(0.3);
-
-    // Enemy setup
-    enemy = this.physics.add.sprite(200, 150, 'enemy');
-    enemy.setAlpha(0);
-
-    // Task setup
-    const task = this.physics.add.staticGroup();
-    task.create(600, 300, 'task');
-
-    // Sound setup
-    enemySound = this.sound.add('enemySound');
-    taskSound = this.sound.add('taskSound');
 
     // Input setup
     cursors = this.input.keyboard.createCursorKeys();
@@ -55,9 +34,6 @@ function create() {
     this.input.on('pointermove', function (pointer) {
         player.rotation = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
     });
-
-    // Collision setup
-    this.physics.add.overlap(player, task, completeTask, null, this);
 }
 
 function update() {
@@ -74,32 +50,5 @@ function update() {
         player.setVelocityY(-160);
     } else if (cursors.down.isDown) {
         player.setVelocityY(160);
-    }
-
-    // Flashlight position
-    flashlight.setPosition(player.x, player.y);
-
-    // Check for enemy visibility
-    if (Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y) < flashlight.radius) {
-        enemy.setAlpha(1);
-    } else {
-        enemy.setAlpha(0);
-    }
-
-    // Play sound if enemy is near
-    if (Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y) < 200) {
-        if (!enemySound.isPlaying) {
-            enemySound.play();
-        }
-    } else {
-        enemySound.stop();
-    }
-}
-
-function completeTask(player, task) {
-    if (!taskComplete) {
-        taskSound.play();
-        taskComplete = true;
-        // Here you can add logic for completing the task
     }
 }
