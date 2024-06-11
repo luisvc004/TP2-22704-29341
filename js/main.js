@@ -1,104 +1,79 @@
-const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false
-        }
-    },
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    }
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const player = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    width: 50,
+    height: 50,
+    speed: 5,
+    angle: 0,
 };
 
-const game = new Phaser.Game(config);
-let player, flashlight, cursors;
-let enemy, taskComplete = false;
-let enemySound, taskSound;
+const keys = {
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+};
 
-function preload() {
-    this.load.image('player', 'assets/player.png');
-    this.load.image('enemy', 'assets/enemy.png');
-    this.load.image('task', 'assets/task.png');
-    this.load.audio('enemySound', 'assets/enemySound.mp3');
-    this.load.audio('taskSound', 'assets/taskSound.mp3');
-}
+document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+        case 'w':
+            keys.w = true;
+            break;
+        case 'a':
+            keys.a = true;
+            break;
+        case 's':
+            keys.s = true;
+            break;
+        case 'd':
+            keys.d = true;
+            break;
+    }
+});
 
-function create() {
-    // Player setup
-    player = this.physics.add.sprite(400, 300, 'player');
-    player.setCollideWorldBounds(true);
+document.addEventListener('keyup', (e) => {
+    switch (e.key) {
+        case 'w':
+            keys.w = false;
+            break;
+        case 'a':
+            keys.a = false;
+            break;
+        case 's':
+            keys.s = false;
+            break;
+        case 'd':
+            keys.d = false;
+            break;
+    }
+});
 
-    // Flashlight setup
-    flashlight = this.add.circle(player.x, player.y, 100).setAlpha(0.3);
-
-    // Enemy setup
-    enemy = this.physics.add.sprite(200, 150, 'enemy');
-    enemy.setAlpha(0);
-
-    // Task setup
-    const task = this.physics.add.staticGroup();
-    task.create(600, 300, 'task');
-
-    // Sound setup
-    enemySound = this.sound.add('enemySound');
-    taskSound = this.sound.add('taskSound');
-
-    // Input setup
-    cursors = this.input.keyboard.createCursorKeys();
-
-    // Mouse pointer setup
-    this.input.on('pointermove', function (pointer) {
-        player.rotation = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
-    });
-
-    // Collision setup
-    this.physics.add.overlap(player, task, completeTask, null, this);
-}
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+});
 
 function update() {
-    // Player movement
-    player.setVelocity(0);
-    if (cursors.left.isDown) {
-        player.setVelocityX(-160);
-    } else if (cursors.right.isDown) {
-        player.setVelocityX(160);
-    }
+    if (keys.w) player.y -= player.speed;
+    if (keys.s) player.y += player.speed;
+    if (keys.a) player.x -= player.speed;
+    if (keys.d) player.x += player.speed;
 
-    if (cursors.up.isDown) {
-        player.setVelocityY(-160);
-    } else if (cursors.down.isDown) {
-        player.setVelocityY(160);
-    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Flashlight position
-    flashlight.setPosition(player.x, player.y);
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+    ctx.restore();
 
-    // Check for enemy visibility
-    if (Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y) < flashlight.radius) {
-        enemy.setAlpha(1);
-    } else {
-        enemy.setAlpha(0);
-    }
-
-    // Play sound if enemy is near
-    if (Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y) < 200) {
-        if (!enemySound.isPlaying) {
-            enemySound.play();
-        }
-    } else {
-        enemySound.stop();
-    }
+    requestAnimationFrame(update);
 }
 
-function completeTask(player, task) {
-    if (!taskComplete) {
-        taskSound.play();
-        taskComplete = true;
-        // Here you can add logic for completing the task
-    }
-}
+update();
