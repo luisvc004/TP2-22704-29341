@@ -16,39 +16,52 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-let player, cursors;
+let player, cursors, keys;
 
 function preload() {
-this.load.image('player', 'assets/poisson_dist.png');
+    this.load.image('player', 'assets/poisson_dist.png');
 }
 
 function create() {
-// Player setup
-player = this.physics.add.sprite(400, 300, 'player');
-player.setCollideWorldBounds(true);
+    // Player setup
+    player = this.physics.add.sprite(400, 300, 'player');
+    player.setCollideWorldBounds(true);
 
-// Input setup
-cursors = this.input.keyboard.createCursorKeys();
+    // Input setup for WASD keys and arrow keys
+    keys = this.input.keyboard.addKeys({
+        up: Phaser.Input.Keyboard.KeyCodes.W,
+        left: Phaser.Input.Keyboard.KeyCodes.A,
+        down: Phaser.Input.Keyboard.KeyCodes.S,
+        right: Phaser.Input.Keyboard.KeyCodes.D,
+        upArrow: Phaser.Input.Keyboard.KeyCodes.UP,
+        downArrow: Phaser.Input.Keyboard.KeyCodes.DOWN,
+        leftArrow: Phaser.Input.Keyboard.KeyCodes.LEFT,
+        rightArrow: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+    });
 
-// Mouse pointer setup
-this.input.on('pointermove', function (pointer) {
-    player.rotation = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
-});
+    // Mouse pointer setup
+    this.input.on('pointermove', function (pointer) {
+        player.rotation = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
+    });
 }
 
 function update() {
-// Player movement
-player.setVelocity(0);  // Reset velocity
+    // Reset player velocity
+    player.setVelocity(0);
 
-if (cursors.left.isDown) {
-    player.setVelocityX(-160);
-} else if (cursors.right.isDown) {
-    player.setVelocityX(160);
+    // Player movement using WASD keys
+    if (keys.left.isDown || keys.leftArrow.isDown) {
+        player.setVelocityX(-160);
+    } else if (keys.right.isDown || keys.rightArrow.isDown) {
+        player.setVelocityX(160);
+    }
+
+    if (keys.up.isDown || keys.upArrow.isDown) {
+        player.setVelocityY(-160);
+    } else if (keys.down.isDown || keys.downArrow.isDown) {
+        player.setVelocityY(160);
+    }
 }
 
-if (cursors.up.isDown) {
-    player.setVelocityY(-160);
-} else if (cursors.down.isDown) {
-    player.setVelocityY(160);
-}
-}
+// Start the game
+game.scene.start
