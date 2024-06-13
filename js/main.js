@@ -26,6 +26,9 @@ let player, cursors, flashlight, toggleLightKey, isLightOn = false;
 let energyBar, energyMaskGraphics, energyMask;
 let energyLevel = 100; // Energia começa em 100%
 let initialEnergyLevel = 100; // Guarda o valor inicial da energia
+let flashingInterval; // Variável para armazenar o intervalo de piscar
+let noBatteryText; // Texto de aviso "No battery"
+let noBatteryTween; // Tween para fazer o texto piscar
 
 function preload() {
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
@@ -74,6 +77,21 @@ function create() {
     energyMask = energyMaskGraphics.createGeometryMask();
 
     energyBar.setMask(energyMask);
+
+    // Inicializar o texto de aviso "No battery"
+    noBatteryText = this.add.text(400, 50, 'No battery', { font: '24px Arial', fill: '#ff0000', align: 'center' });
+    noBatteryText.setOrigin(0.5);
+    noBatteryText.setVisible(false); // Inicialmente invisível
+
+    // Criar tween para piscar o texto
+    noBatteryTween = this.tweens.add({
+        targets: noBatteryText,
+        alpha: 0,
+        duration: 500, // Duração do tween
+        ease: 'Linear',
+        yoyo: true,
+        repeat: -1 // Repetir indefinidamente enquanto a energia estiver abaixo de 20%
+    });
 }
 
 function update() {
@@ -131,7 +149,7 @@ function updateFlashlight() {
     if (isLightOn && energyLevel > 0) {
         flashlight.fillStyle(0xffffff, 0.8);
 
-        const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.activePointer.x, this.input.activePointer.y);
+        const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.mousePointer.x, this.input.mousePointer.y);
         const lightRadius = 150;
 
         flashlight.beginPath();
@@ -145,6 +163,21 @@ function updateFlashlight() {
 
         // Garante que a energia não seja menor que 0
         energyLevel = Phaser.Math.Clamp(energyLevel, 0, 100);
+
+        // Verifica se a energia está abaixo de 20% para começar a piscar o aviso
+        if (energyLevel <= 20 && energyLevel > 0) {
+            noBatteryText.setVisible(true); // Mostra o texto "No battery"
+            noBatteryTween.play(); // Inicia o tween para piscar o texto
+            startFlashing(); // Inicia o piscar do flashlight
+        } else {
+            noBatteryText.setVisible(false); // Esconde o texto "No battery"
+            noBatteryTween.stop(); // Para o tween do texto
+            stopFlashing(); // Para o piscar do flashlight
+        }
+    } else {
+        noBatteryText.setVisible(false); // Esconde o texto "No battery"
+        noBatteryTween.stop(); // Para o tween do texto
+        stopFlashing(); // Para o piscar do flashlight
     }
 }
 
@@ -159,4 +192,15 @@ function updateEnergyBar() {
     energyBar.fillRect(10, 10, 200 * (energyLevel / 100), 20);
 
     energyBar.setMask(energyMask);
+}
+
+function startFlashing() {
+    flashingInterval = setInterval(() => {
+        flashlight.visible = !flashlight.visible; // Alternar entre visível e invisível
+    }, 100); // Intervalo de 100ms para piscar rapidamente
+}
+
+function stopFlashing() {
+    clearInterval(flashingInterval);
+    flashlight.visible = true; // Garantir que a luz esteja visível se não estiver piscando
 }
