@@ -21,21 +21,20 @@ const config = {
     }
 };
 
-
 const game = new Phaser.Game(config);
-let player, cursors, flashlight;
+let player, cursors, flashlight, toggleLightKey, isLightOn = false;
+let energyBar, energyMaskGraphics, energyMask;
+let energyLevel = 100; // Energia começa em 100%
+let initialEnergyLevel = 100; // Guarda o valor inicial da energia
 
 function preload() {
-    // Carregar spritesheet (cada frame tem 32x32 pixels)
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
 }
 
 function create() {
-    // Player setup
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.3);
     player.setCollideWorldBounds(true);
 
-    // Input setup for WASD keys
     cursors = this.input.keyboard.addKeys({
         'up': Phaser.Input.Keyboard.KeyCodes.W,
         'down': Phaser.Input.Keyboard.KeyCodes.S,
@@ -43,56 +42,121 @@ function create() {
         'right': Phaser.Input.Keyboard.KeyCodes.D
     });
 
-    // Criação do cone de luz
+    toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+
     flashlight = this.add.graphics();
-    flashlight.fillStyle(0xffffffff, 0.5);  // Branco com 50% de transparência
 
-    // Configurar as animações para o jogador
-    const frameCountPerRow = 7;
-    const animationRowCount = 9;
+    this.anims.create({
+        key: 'run',
+        frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }),
+        frameRate: 7,
+        repeat: -1
+    });
 
-   // for (let i = 0; i <= animationRowCount; i++) {
-        this.anims.create({
-            key: `run`,
-            frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }),
-            frameRate: 7,
-            repeat: -1
-        });
-  //  }
+    this.anims.create({
+        key: 'idle',
+        frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }),
+        frameRate: 4,
+        repeat: -1
+    });
 
-    // Exemplo: Iniciar a primeira animação
-    player.anims.play('run');
+    player.anims.play('idle');
+
+    // Criar a barra de energia
+    energyBar = this.add.graphics();
+    energyBar.fillStyle(0xffffff);
+    energyBar.fillRect(10, 10, 200, 20); // Barra inicial com largura de 200
+
+    // Criar a máscara da barra de energia
+    energyMaskGraphics = this.make.graphics();
+    energyMaskGraphics.fillStyle(0x000000);
+    energyMaskGraphics.fillRect(0, 0, 200, 20); // Máscara inicial com largura de 200
+    energyMask = energyMaskGraphics.createGeometryMask();
+
+    energyBar.setMask(energyMask);
 }
 
 function update() {
-    // Player movement
-    player.setVelocity(0);  // Reset velocity
+    // Verifica se a tecla F foi pressionada para ligar ou desligar a luz
+    if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
+        isLightOn = !isLightOn;
+
+        // Se a luz for desligada, guarda o nível atual de energia como o inicial
+        if (!isLightOn) {
+            initialEnergyLevel = energyLevel;
+        } else {
+            // Se a luz for ligada e o nível inicial de energia for maior que zero,
+            // restaura energyLevel para initialEnergyLevel
+            if (initialEnergyLevel > 0) {
+                energyLevel = initialEnergyLevel;
+            }
+        }
+    }
+
+    player.setVelocity(0);
+
+    let velocityX = 0;
+    let velocityY = 0;
 
     if (cursors.left.isDown) {
-        player.setVelocityX(-130);
+        velocityX = -130;
+        player.setFlipX(true);
     } else if (cursors.right.isDown) {
-        player.setVelocityX(130);
+        velocityX = 130;
+        player.setFlipX(false);
     }
 
     if (cursors.up.isDown) {
-        player.setVelocityY(-130);
+        velocityY = -130;
     } else if (cursors.down.isDown) {
-        player.setVelocityY(130);
+        velocityY = 130;
     }
 
-    // Atualizar posição e rotação do cone de luz
+    player.setVelocityX(velocityX);
+    player.setVelocityY(velocityY);
+
+    if (velocityX !== 0 || velocityY !== 0) {
+        player.anims.play('run', true);
+    } else {
+        player.anims.play('idle', true);
+    }
+
+    updateEnergyBar();
+    updateFlashlight.call(this); // Chama updateFlashlight garantindo que o contexto seja correto
+}
+
+function updateFlashlight() {
     flashlight.clear();
-    flashlight.fillStyle(0xffffffff, 0.8);  // Branco com 50% de transparência
 
-    const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.activePointer.x, this.input.activePointer.y);
-    const lightRadius = 150;
-    const lightWidth = 150;
+    if (isLightOn && energyLevel > 0) {
+        flashlight.fillStyle(0xffffff, 0.8);
 
-    flashlight.beginPath();
-    flashlight.moveTo(player.x + 7, player.y);
-    flashlight.lineTo(player.x + Math.cos(angle - 0.2) * lightWidth, player.y + Math.sin(angle - 0.2) * lightWidth);
-    flashlight.lineTo(player.x + Math.cos(angle) * lightRadius, player.y + Math.sin(angle) * lightRadius);
-    flashlight.lineTo(player.x + Math.cos(angle + 0.2) * lightWidth, player.y + Math.sin(angle + 0.2) * lightWidth);
-    flashlight.closePath();
-    flashlight.fillPath();
+        const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.activePointer.x, this.input.activePointer.y);
+        const lightRadius = 150;
+
+        flashlight.beginPath();
+        flashlight.arc(player.x, player.y, lightRadius, angle - 0.4, angle + 0.2, false);
+        flashlight.lineTo(player.x, player.y);
+        flashlight.closePath();
+        flashlight.fillPath();
+
+        // Reduz a energia da luz conforme o tempo
+        energyLevel -= 0.1; // Ajuste conforme necessário
+
+        // Garante que a energia não seja menor que 0
+        energyLevel = Phaser.Math.Clamp(energyLevel, 0, 100);
+    }
+}
+
+function updateEnergyBar() {
+    // Atualiza a máscara da barra de energia conforme o nível atual de energia
+    energyMaskGraphics.clear();
+    energyMaskGraphics.fillStyle(0x000000);
+    energyMaskGraphics.fillRect(10, 0, 200 * (energyLevel / 100), 20);
+
+    energyBar.clear();
+    energyBar.fillStyle(0xffffff);
+    energyBar.fillRect(10, 10, 200 * (energyLevel / 100), 20);
+
+    energyBar.setMask(energyMask);
 }
