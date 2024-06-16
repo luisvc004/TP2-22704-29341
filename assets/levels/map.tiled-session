@@ -1,0 +1,23 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "World.tsx": {
+            "scaleInEditor": 2
+        }
+    },
+    "last.imagePath": "C:/EasyPHP-5.3.6.0/www/game_things/2D Pixel Dungeon Asset Pack",
+    "map.lastUsedFormat": "json",
+    "openFiles": [
+    ],
+    "project": "map.tiled-project",
+    "recentFiles": [
+        "World.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx"
+}
