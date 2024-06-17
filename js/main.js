@@ -2,7 +2,8 @@ const config = {
     type: Phaser.AUTO,
     width: 1000,
     height: 600,
-    backgroundColor: '#000000', // Dark background color for night environment
+    backgroundColor: '#000000',  // Dark background color for night environment
+    parent: 'game-container',                                
     physics: {
         default: 'arcade',
         arcade: {
@@ -39,6 +40,7 @@ let easyStar;
 function preload() {
     //mapa
     this.load.image('tileset', 'assets/tileset.png');
+    this.load.image('battery', 'assets/battery.png');
     this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
 
@@ -51,12 +53,13 @@ function create() {
     const tileset = map.addTilesetImage('tileset', 'tileset');
     
     // Criar camadas
+
     const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
     walls = map.createLayer('Wall', tileset, 0, 0);
     walls.setCollisionByExclusion([-1]);
 
     // Apply a dark tint to the map layers
-    backgroundLayer.setTint(0x2a2a2a);
+    //backgroundLayer.setTint(0x2a2a2a);
 
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.3);
     player.setCollideWorldBounds(true);
@@ -66,9 +69,31 @@ function create() {
     enemy_idle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
     enemy_run = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_run').setScale(1.3);
 
+    batteries = this.physics.add.group();
+    for (let i = 0; i < 4; i++) {
+        const batteryPosition = getValidPosition(map, walls);
+        const battery = batteries.create(batteryPosition.x, batteryPosition.y, 'battery').setScale(0.07);
+        battery.setInteractive(); // Torna a bateria interativa
+        battery.on('pointerdown', () => collectBattery(battery)); // Adiciona um listener de evento para clique
+    }
+
+    cursors = this.input.keyboard.createCursorKeys();
+
+    function collectBattery(battery) {
+        if (Phaser.Math.Distance.Between(player.x, player.y, battery.x, battery.y) <= 50) {
+            energyLevel = 100; // Restaura a energia completa quando o jogador clica na bateria
+            battery.destroy(); // Remove a bateria do jogo
+            updateEnergyBar(); // Atualiza a visualização da barra de energia
+            if (energyLevel > 20) {
+                noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
+                noBatteryTween.stop(0);  // E para a animação de piscar
+            }
+        }
+    }
+
     this.physics.add.collider(player, walls);
     this.physics.add.collider(enemy_run, walls);
-    this.physics.add.collider(enemy_run, player, () => {
+    this.physics.add.overlap(enemy_run, player, () => {
         // Lógica quando o inimigo colide com o jogador (por exemplo, reduzir vida do jogador)
     });
 
@@ -194,7 +219,7 @@ function update() {
 
     // Lógica de perseguição do inimigo
     const distance = Phaser.Math.Distance.Between(enemy_run.x, enemy_run.y, player.x, player.y);
-    if (distance < 300) { // Se o jogador estiver dentro de 300 pixels do inimigo
+    if (distance < 100000) { // Se o jogador estiver dentro de 300 pixels do inimigo
         const angle = Phaser.Math.Angle.Between(enemy_run.x, enemy_run.y, player.x, player.y);
         const speed = 80; // Ajuste a velocidade do inimigo conforme necessário
         enemy_run.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
