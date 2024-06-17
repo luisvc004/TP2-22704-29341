@@ -28,31 +28,24 @@ var tilesprite;
 
 function preload() {
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
-   
-    
     this.load.image('tileset', 'assets/tileset.png');
     this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
-    
 }
 
 function create() {
-
     const map = this.make.tilemap({ key: 'map' });
     const tileset = map.addTilesetImage('tileset', 'tileset');
-    
+
     // Criar camadas
     const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
-    //const blockedLayer = map.createLayer('Blocked', tileset, 0, 0);
 
     tilesprite = this.add.tileSprite(400, 300, 800, 800, 'tileset').setPipeline('Light2D');
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.5);
-    //player.setPipeline('Light2D');
-    //tilesprite.setPipeline('Light2D');
     this.lights.enable();
     this.lights.setAmbientColor(0x404040);
 
     spotlight = this.lights.addLight(0, 0, 70).setIntensity(7);
-    
+
     player.setCollideWorldBounds(true);
 
     cursors = this.input.keyboard.addKeys({
@@ -77,8 +70,6 @@ function create() {
         frameRate: 4,
         repeat: -1
     });
-
-  //  player.anims.play('idle');
 
     // Criar a barra de energia
     energyBar = this.add.graphics();
@@ -108,7 +99,11 @@ function create() {
         repeat: -1 // Repetir indefinidamente enquanto a energia estiver abaixo de 20%
     });
 
-    updateSpotlight();
+    this.input.on('pointermove', function (pointer) {
+        this.input.mousePointer = pointer;
+    }, this);
+
+    updateSpotlight.call(this);
 }
 
 function update() {
@@ -122,7 +117,7 @@ function update() {
                 energyLevel = initialEnergyLevel;
             }
         }
-        updateSpotlight();
+        updateSpotlight.call(this);
     }
 
     player.setVelocity(0);
@@ -174,14 +169,25 @@ function update() {
         stopFlashing();
     }
 
-    updateSpotlight();
+    updateSpotlight.call(this);
 }
 
 function updateSpotlight() {
     if (isLightOn && energyLevel > 0) {
         spotlight.setVisible(true);
-        spotlight.x = player.x + 60;
-        spotlight.y = player.y;
+        
+        let mouseX = this.input.mousePointer.worldX;
+        let mouseY = this.input.mousePointer.worldY;
+
+        let dx = mouseX - player.x;
+        let dy = mouseY - player.y;
+        let angle = Math.atan2(dy, dx);
+
+        let spotlightX = player.x + 40 * Math.cos(angle);
+        let spotlightY = player.y + 40 * Math.sin(angle);
+
+        spotlight.x = spotlightX;
+        spotlight.y = spotlightY;
     } else {
         spotlight.setVisible(false);
     }

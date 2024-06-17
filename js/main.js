@@ -2,7 +2,7 @@ const config = {
     type: Phaser.AUTO,
     width: 1000,
     height: 600,
-   // backgroundColor: '#73767a',
+    backgroundColor: '#000000', // Dark background color for night environment
     physics: {
         default: 'arcade',
         arcade: {
@@ -29,29 +29,39 @@ let initialEnergyLevel = 100; // Guarda o valor inicial da energia
 let flashingInterval; // Variável para armazenar o intervalo de piscar
 let noBatteryText; // Texto de aviso "No battery"
 let noBatteryTween; // Tween para fazer o texto piscar
+let walls; // Reference to the wall layer
 
 function preload() {
-
     //mapa
     this.load.image('tileset', 'assets/tileset.png');
     this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
-
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
-    
+
+    this.load.spritesheet('enemy_run', 'assets/enemy1/run.png', { frameWidth: 40, frameHeight: 40 });
+    this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 40 });
 }
 
 function create() {
-
     const map = this.make.tilemap({ key: 'map' });
     const tileset = map.addTilesetImage('tileset', 'tileset');
     
     // Criar camadas
     const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
-    const walls = map.createLayer('Wall', tileset, 0, 0);
+    walls = map.createLayer('Wall', tileset, 0, 0);
     walls.setCollisionByExclusion([-1]);
 
+    // Apply a dark tint to the map layers
+    backgroundLayer.setTint(0x2a2a2a);
+  //  walls.setTint(0x2a2a2a);
+
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.3);
+    enemy_idle = this.physics.add.sprite(400, 300, 'enemy_idle').setScale(1.3);
+    enemy_run = this.physics.add.sprite(400, 300, 'enemy_run').setScale(1.3);
+
     player.setCollideWorldBounds(true);
+
+    // Darken the player sprite
+    //player.setTint(0x555555);
 
     this.physics.add.collider(player, walls);
 
@@ -67,20 +77,35 @@ function create() {
     flashlight = this.add.graphics();
 
     this.anims.create({
-        key: 'run',
+        key: 'player_run',
         frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }),
         frameRate: 7,
         repeat: -1
     });
 
     this.anims.create({
-        key: 'idle',
+        key: 'player_idle',
         frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }),
         frameRate: 4,
         repeat: -1
     });
 
-    player.anims.play('idle');
+    this.anims.create({
+        key: 'enemy_run',
+        frames: this.anims.generateFrameNumbers('enemy_run', {frames: [1,4,7,10,13,16,19]}),
+        frameRate: 7,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'enemy_idle',
+        frames: this.anims.generateFrameNumbers('enemy_idle', {frames: [1,4,7,10]}),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    player.anims.play('player_idle');
+    enemy_run.play('enemy_run');
 
     // Criar a barra de energia
     energyBar = this.add.graphics();
@@ -151,9 +176,9 @@ function update() {
     player.setVelocityY(velocityY);
 
     if (velocityX !== 0 || velocityY !== 0) {
-        player.anims.play('run', true);
+        player.anims.play('player_run', true);
     } else {
-        player.anims.play('idle', true);
+        player.anims.play('player_idle', true);
     }
 
     updateEnergyBar();
@@ -164,14 +189,75 @@ function updateFlashlight() {
     flashlight.clear();
 
     if (isLightOn && energyLevel > 0) {
-        flashlight.fillStyle(0xffffff, 0.8);
+        flashlight.fillStyle(0xffffff, 0.09);
 
         const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.mousePointer.x, this.input.mousePointer.y);
         const lightRadius = 150;
 
+        const startAngle = angle - 0.4;
+        const endAngle = angle + 0.2;
+
+        // Variables to store the end points of the flashlight beam
+        let endX1 = player.x + lightRadius * Math.cos(startAngle);
+        let endY1 = player.y + lightRadius * Math.sin(startAngle);
+        let endX2 = player.x + lightRadius * Math.cos(endAngle);
+        let endY2 = player.y + lightRadius * Math.sin(endAngle);
+
+        // Create a triangle representing the flashlight beam
+        let flashlightBeam = new Phaser.Geom.Triangle(
+            player.x, player.y,
+            endX1, endY1,
+            endX2, endY2
+        );
+
+        // Check for overlap between the flashlight beam and the walls and adjust the beam
+        walls.forEachTile(tile => {
+            if (tile.index !== -1) {
+                const tileWorldX = tile.getCenterX();
+                const tileWorldY = tile.getCenterY();
+                const tileRect = new Phaser.Geom.Rectangle(tileWorldX - tile.width / 2, tileWorldY - tile.height / 2, tile.width, tile.height);
+
+                // Check for intersections with the edges of the rectangle
+                const triangleEdges = [
+                    new Phaser.Geom.Line(player.x, player.y, endX1, endY1),
+                    new Phaser.Geom.Line(player.x, player.y, endX2, endY2)
+                ];
+
+                const rectEdges = [
+                    new Phaser.Geom.Line(tileRect.x, tileRect.y, tileRect.x + tileRect.width, tileRect.y),
+                    new Phaser.Geom.Line(tileRect.x + tileRect.width, tileRect.y, tileRect.x + tileRect.width, tileRect.y + tileRect.height),
+                    new Phaser.Geom.Line(tileRect.x + tileRect.width, tileRect.y + tileRect.height, tileRect.x, tileRect.y + tileRect.height),
+                    new Phaser.Geom.Line(tileRect.x, tileRect.y + tileRect.height, tileRect.x, tileRect.y)
+                ];
+
+                for (let i = 0; i < triangleEdges.length; i++) {
+                    for (let j = 0; j < rectEdges.length; j++) {
+                        let intersection = new Phaser.Geom.Point();
+                        if (Phaser.Geom.Intersects.LineToLine(triangleEdges[i], rectEdges[j], intersection)) {
+                            if (i === 0) {
+                                endX1 = intersection.x;
+                                endY1 = intersection.y;
+                            } else {
+                                endX2 = intersection.x;
+                                endY2 = intersection.y;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Draw the adjusted flashlight beam
+        flashlightBeam = new Phaser.Geom.Triangle(
+            player.x, player.y,
+            endX1, endY1,
+            endX2, endY2
+        );
+
         flashlight.beginPath();
-        flashlight.arc(player.x, player.y, lightRadius, angle - 0.4, angle + 0.2, false);
-        flashlight.lineTo(player.x, player.y);
+        flashlight.moveTo(flashlightBeam.x1, flashlightBeam.y1);
+        flashlight.lineTo(flashlightBeam.x2, flashlightBeam.y2);
+        flashlight.lineTo(flashlightBeam.x3, flashlightBeam.y3);
         flashlight.closePath();
         flashlight.fillPath();
 
