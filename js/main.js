@@ -2,7 +2,7 @@ const config = {
     type: Phaser.AUTO,
     width: 1000,
     height: 600,
-    backgroundColor: '#73767a',
+   // backgroundColor: '#73767a',
     physics: {
         default: 'arcade',
         arcade: {
@@ -31,12 +31,29 @@ let noBatteryText; // Texto de aviso "No battery"
 let noBatteryTween; // Tween para fazer o texto piscar
 
 function preload() {
+
+    //mapa
+    this.load.image('tileset', 'assets/tileset.png');
+    this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
+
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
+    
 }
 
 function create() {
+
+    const map = this.make.tilemap({ key: 'map' });
+    const tileset = map.addTilesetImage('tileset', 'tileset');
+    
+    // Criar camadas
+    const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
+    const walls = map.createLayer('Wall', tileset, 0, 0);
+    walls.setCollisionByExclusion([-1]);
+
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.3);
     player.setCollideWorldBounds(true);
+
+    this.physics.add.collider(player, walls);
 
     cursors = this.input.keyboard.addKeys({
         'up': Phaser.Input.Keyboard.KeyCodes.W,

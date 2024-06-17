@@ -1,62 +1,212 @@
-﻿var config = {
-    type: Phaser.WEBGL,
-    parent: 'phaser-example',
-    width: 800,
+﻿const config = {
+    type: Phaser.AUTO,
+    width: 1000,
     height: 600,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
+    },
     scene: {
         preload: preload,
         create: create,
         update: update
-    }
+    },
 };
 
-var game = new Phaser.Game(config);
+const game = new Phaser.Game(config);
+let player, cursors, spotlight, toggleLightKey, isLightOn = false;
+let energyBar, energyMaskGraphics, energyMask;
+let energyLevel = 1000000; // Energia começa em 100%
+let initialEnergyLevel = 1000; // Guarda o valor inicial da energia
+let flashingInterval; // Variável para armazenar o intervalo de piscar
+let noBatteryText; // Texto de aviso "No battery"
+let noBatteryTween; // Tween para fazer o texto piscar
 
 var tilesprite;
-var spotlight;
-var flashingInterval;
 
-function preload () {
-    // this.load.image('brick', ['assets/normal-maps/brick.jpg', 'assets/normal-maps/brick_n.png']);
+function preload() {
+    this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
+   
+    
+    this.load.image('tileset', 'assets/tileset.png');
+    this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
+    
 }
 
-function create () {
-    tilesprite = this.add.tileSprite(400, 300, 800, 600, 'brick').setPipeline('Light2D');
+function create() {
 
+    const map = this.make.tilemap({ key: 'map' });
+    const tileset = map.addTilesetImage('tileset', 'tileset');
+    
+    // Criar camadas
+    const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
+    //const blockedLayer = map.createLayer('Blocked', tileset, 0, 0);
+
+    tilesprite = this.add.tileSprite(400, 300, 800, 800, 'tileset').setPipeline('Light2D');
+    player = this.physics.add.sprite(400, 300, 'player').setScale(1.5);
+    //player.setPipeline('Light2D');
+    //tilesprite.setPipeline('Light2D');
     this.lights.enable();
-    this.lights.setAmbientColor(0x808080);
+    this.lights.setAmbientColor(0x404040);
 
-    spotlight = this.lights.addLight(400, 300, 280).setIntensity(3);
+    spotlight = this.lights.addLight(0, 0, 70).setIntensity(7);
+    
+    player.setCollideWorldBounds(true);
 
-    this.input.on('pointermove', function (pointer) {
-        spotlight.x = pointer.x;
-        spotlight.y = pointer.y;
+    cursors = this.input.keyboard.addKeys({
+        'up': Phaser.Input.Keyboard.KeyCodes.W,
+        'down': Phaser.Input.Keyboard.KeyCodes.S,
+        'left': Phaser.Input.Keyboard.KeyCodes.A,
+        'right': Phaser.Input.Keyboard.KeyCodes.D
     });
 
-    // Start the flashing effect
-    startFlashing();
+    toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
 
-    var i = 0;
-    this.input.on('pointerdown', (pointer) => {
-        if (i === 1) {
-            this.lights.active = true;
-            i = 0;
-        } else {
-            this.lights.active = false;
-            i = 1;
-        }
+    this.anims.create({
+        key: 'run',
+        frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }),
+        frameRate: 7,
+        repeat: -1
     });
+
+    this.anims.create({
+        key: 'idle',
+        frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }),
+        frameRate: 4,
+        repeat: -1
+    });
+
+  //  player.anims.play('idle');
+
+    // Criar a barra de energia
+    energyBar = this.add.graphics();
+    energyBar.fillStyle(0xffffff);
+    energyBar.fillRect(10, 10, 200, 20); // Barra inicial com largura de 200
+
+    // Criar a máscara da barra de energia
+    energyMaskGraphics = this.make.graphics();
+    energyMaskGraphics.fillStyle(0x000000);
+    energyMaskGraphics.fillRect(0, 0, 200, 20); // Máscara inicial com largura de 200
+    energyMask = energyMaskGraphics.createGeometryMask();
+
+    energyBar.setMask(energyMask);
+
+    // Inicializar o texto de aviso "No battery"
+    noBatteryText = this.add.text(400, 50, 'No battery', { font: '24px Arial', fill: '#ff0000', align: 'center' });
+    noBatteryText.setOrigin(0.5);
+    noBatteryText.setVisible(false); // Inicialmente invisível
+
+    // Criar tween para piscar o texto
+    noBatteryTween = this.tweens.add({
+        targets: noBatteryText,
+        alpha: 0,
+        duration: 100, // Duração do tween
+        ease: 'Linear',
+        yoyo: true,
+        repeat: -1 // Repetir indefinidamente enquanto a energia estiver abaixo de 20%
+    });
+
+    updateSpotlight();
 }
 
-function update () {
-    tilesprite.tilePositionX += 0.3;
-    tilesprite.tilePositionY += 0.6;
+function update() {
+    if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
+        isLightOn = !isLightOn;
+
+        if (!isLightOn) {
+            initialEnergyLevel = energyLevel;
+        } else {
+            if (initialEnergyLevel > 0) {
+                energyLevel = initialEnergyLevel;
+            }
+        }
+        updateSpotlight();
+    }
+
+    player.setVelocity(0);
+
+    let velocityX = 0;
+    let velocityY = 0;
+
+    if (cursors.left.isDown) {
+        velocityX = -110;
+        player.setFlipX(true);
+    } else if (cursors.right.isDown) {
+        velocityX = 110;
+        player.setFlipX(false);
+    }
+
+    if (cursors.up.isDown) {
+        velocityY = -110;
+    } else if (cursors.down.isDown) {
+        velocityY = 110;
+    }
+
+    player.setVelocityX(velocityX);
+    player.setVelocityY(velocityY);
+
+    if (velocityX !== 0 || velocityY !== 0) {
+        player.anims.play('run', true);
+    } else {
+        player.anims.play('idle', true);
+    }
+
+    updateEnergyBar();
+
+    if (isLightOn && energyLevel > 0) {
+        energyLevel -= 0.1;
+        energyLevel = Phaser.Math.Clamp(energyLevel, 0, 1000);
+
+        if (energyLevel <= 20 && energyLevel > 0) {
+            noBatteryText.setVisible(true);
+            noBatteryTween.play();
+            startFlashing();
+        } else {
+            noBatteryText.setVisible(false);
+            noBatteryTween.stop();
+            stopFlashing();
+        }
+    } else {
+        noBatteryText.setVisible(false);
+        noBatteryTween.stop();
+        stopFlashing();
+    }
+
+    updateSpotlight();
+}
+
+function updateSpotlight() {
+    if (isLightOn && energyLevel > 0) {
+        spotlight.setVisible(true);
+        spotlight.x = player.x + 60;
+        spotlight.y = player.y;
+    } else {
+        spotlight.setVisible(false);
+    }
+}
+
+function updateEnergyBar() {
+    energyMaskGraphics.clear();
+    energyMaskGraphics.fillStyle(0x000000);
+    energyMaskGraphics.fillRect(10, 0, 200 * (energyLevel / 100), 20);
+
+    energyBar.clear();
+    if (energyLevel <= 20) {
+        energyBar.fillStyle(0xff0000); // Vermelho quando a energia é baixa
+    } else {
+        energyBar.fillStyle(0xffffff); // Branco quando a energia é alta
+    }
+    energyBar.fillRect(10, 10, 200 * (energyLevel / 100), 20);
+
+    energyBar.setMask(energyMask);
 }
 
 function startFlashing() {
     flashingInterval = setInterval(() => {
         spotlight.visible = !spotlight.visible;
-    }, 500); // Adjust the interval as needed
+    }, 100);
 }
 
 function stopFlashing() {
