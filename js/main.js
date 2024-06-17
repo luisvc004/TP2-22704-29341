@@ -30,6 +30,11 @@ let flashingInterval; // Variável para armazenar o intervalo de piscar
 let noBatteryText; // Texto de aviso "No battery"
 let noBatteryTween; // Tween para fazer o texto piscar
 let walls; // Reference to the wall layer
+let enemy_idle, enemy_run; // Referências aos inimigos
+
+let path = [];
+let currentPathIndex = 0;
+let easyStar;
 
 function preload() {
     //mapa
@@ -52,18 +57,20 @@ function create() {
 
     // Apply a dark tint to the map layers
     backgroundLayer.setTint(0x2a2a2a);
-  //  walls.setTint(0x2a2a2a);
 
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.3);
-    enemy_idle = this.physics.add.sprite(400, 300, 'enemy_idle').setScale(1.3);
-    enemy_run = this.physics.add.sprite(400, 300, 'enemy_run').setScale(1.3);
-
     player.setCollideWorldBounds(true);
 
-    // Darken the player sprite
-    //player.setTint(0x555555);
+    // Posicionar inimigo em uma posição aleatória válida
+    const enemyPosition = getValidPosition(map, walls);
+    enemy_idle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
+    enemy_run = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_run').setScale(1.3);
 
     this.physics.add.collider(player, walls);
+    this.physics.add.collider(enemy_run, walls);
+    this.physics.add.collider(enemy_run, player, () => {
+        // Lógica quando o inimigo colide com o jogador (por exemplo, reduzir vida do jogador)
+    });
 
     cursors = this.input.keyboard.addKeys({
         'up': Phaser.Input.Keyboard.KeyCodes.W,
@@ -92,20 +99,20 @@ function create() {
 
     this.anims.create({
         key: 'enemy_run',
-        frames: this.anims.generateFrameNumbers('enemy_run', {frames: [1,4,7,10,13,16,19]}),
+        frames: this.anims.generateFrameNumbers('enemy_run', { frames: [1, 4, 7, 10, 13, 16, 19] }),
         frameRate: 7,
         repeat: -1
     });
 
     this.anims.create({
         key: 'enemy_idle',
-        frames: this.anims.generateFrameNumbers('enemy_idle', {frames: [1,4,7,10]}),
+        frames: this.anims.generateFrameNumbers('enemy_idle', { frames: [1, 4, 7, 10] }),
         frameRate: 10,
         repeat: -1
     });
 
     player.anims.play('player_idle');
-    enemy_run.play('enemy_run');
+    enemy_run.anims.play('enemy_run');
 
     // Criar a barra de energia
     energyBar = this.add.graphics();
@@ -134,6 +141,7 @@ function create() {
         yoyo: true,
         repeat: -1 // Repetir indefinidamente enquanto a energia estiver abaixo de 20%
     });
+
 }
 
 function update() {
@@ -183,6 +191,16 @@ function update() {
 
     updateEnergyBar();
     updateFlashlight.call(this); // Chama updateFlashlight garantindo que o contexto seja correto
+
+    // Lógica de perseguição do inimigo
+    const distance = Phaser.Math.Distance.Between(enemy_run.x, enemy_run.y, player.x, player.y);
+    if (distance < 300) { // Se o jogador estiver dentro de 300 pixels do inimigo
+        const angle = Phaser.Math.Angle.Between(enemy_run.x, enemy_run.y, player.x, player.y);
+        const speed = 80; // Ajuste a velocidade do inimigo conforme necessário
+        enemy_run.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    } else {
+        enemy_run.setVelocity(0); // Para o inimigo se o jogador estiver fora do alcance
+    }
 }
 
 function updateFlashlight() {
@@ -210,14 +228,16 @@ function updateFlashlight() {
             endX2, endY2
         );
 
-        // Check for overlap between the flashlight beam and the walls and adjust the beam
+        // Adjust the beam based on wall collisions
         walls.forEachTile(tile => {
             if (tile.index !== -1) {
-                const tileWorldX = tile.getCenterX();
-                const tileWorldY = tile.getCenterY();
-                const tileRect = new Phaser.Geom.Rectangle(tileWorldX - tile.width / 2, tileWorldY - tile.height / 2, tile.width, tile.height);
+                const tileRect = new Phaser.Geom.Rectangle(
+                    tile.getLeft(),
+                    tile.getTop(),
+                    tile.width,
+                    tile.height
+                );
 
-                // Check for intersections with the edges of the rectangle
                 const triangleEdges = [
                     new Phaser.Geom.Line(player.x, player.y, endX1, endY1),
                     new Phaser.Geom.Line(player.x, player.y, endX2, endY2)
@@ -306,4 +326,23 @@ function startFlashing() {
 function stopFlashing() {
     clearInterval(flashingInterval);
     flashlight.visible = true; // Garantir que a luz esteja visível se não estiver piscando
+}
+
+// Função para gerar uma posição aleatória válida
+function getValidPosition(map, walls) {
+    let position;
+    let isValidPosition = false;
+    
+    while (!isValidPosition) {
+        const x = Phaser.Math.Between(0, map.widthInPixels);
+        const y = Phaser.Math.Between(0, map.heightInPixels);
+
+        const tile = walls.getTileAtWorldXY(x, y);
+
+        if (!tile) {
+            position = { x: x, y: y };
+            isValidPosition = true;
+        }
+    }
+    return position;
 }
