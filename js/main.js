@@ -1,7 +1,7 @@
 const config = {
     type: Phaser.AUTO,
-    width: 1000,
-    height: 600,
+    width: 960,
+    height: 640,
     backgroundColor: '#000000',  // Dark background color for night environment
     parent: 'game-container',                                
     physics: {
@@ -32,20 +32,25 @@ let noBatteryText; // Texto de aviso "No battery"
 let noBatteryTween; // Tween para fazer o texto piscar
 let walls; // Reference to the wall layer
 let enemy_idle, enemy_run; // Referências aos inimigos
+let battery_number = 8; // Número de baterias no mapa
 
 let path = [];
 let currentPathIndex = 0;
 let easyStar;
 
+const enemy_speed = 80;
+
 function preload() {
+
     //mapa
     this.load.image('tileset', 'assets/tileset.png');
     this.load.image('battery', 'assets/battery.png');
     this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
     this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
 
-    this.load.spritesheet('enemy_run', 'assets/enemy1/run.png', { frameWidth: 40, frameHeight: 40 });
-    this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 40 });
+    this.load.spritesheet('enemy_run', 'assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
+    this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
+    
 }
 
 function create() {
@@ -67,12 +72,12 @@ function create() {
     // Posicionar inimigo em uma posição aleatória válida
     const enemyPosition = getValidPosition(map, walls);
     enemy_idle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
-    enemy_run = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_run').setScale(1.3);
+    enemy_run = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_run').setScale(1.6);
 
     batteries = this.physics.add.group();
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < battery_number; i++) {
         const batteryPosition = getValidPosition(map, walls);
-        const battery = batteries.create(batteryPosition.x, batteryPosition.y, 'battery').setScale(0.07);
+        const battery = batteries.create(batteryPosition.x, batteryPosition.y, 'battery').setScale(0.055);
         battery.setInteractive(); // Torna a bateria interativa
         battery.on('pointerdown', () => collectBattery(battery)); // Adiciona um listener de evento para clique
     }
@@ -82,12 +87,16 @@ function create() {
     function collectBattery(battery) {
         if (Phaser.Math.Distance.Between(player.x, player.y, battery.x, battery.y) <= 50) {
             energyLevel = 100; // Restaura a energia completa quando o jogador clica na bateria
+            initialEnergyLevel = 100;
             battery.destroy(); // Remove a bateria do jogo
             updateEnergyBar(); // Atualiza a visualização da barra de energia
             if (energyLevel > 20) {
                 noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
                 noBatteryTween.stop(0);  // E para a animação de piscar
             }
+        }
+        else if (Phaser.Math.Distance.Between(player.x, player.y, battery.x, battery.y) > 50) {
+            
         }
     }
 
@@ -142,7 +151,7 @@ function create() {
     // Criar a barra de energia
     energyBar = this.add.graphics();
     energyBar.fillStyle(0xffffff);
-    energyBar.fillRect(10, 10, 200, 20); // Barra inicial com largura de 200
+    energyBar.fillRect(player.x, player.y, 200, 20); // Barra inicial com largura de 200
 
     // Criar a máscara da barra de energia
     energyMaskGraphics = this.make.graphics();
@@ -192,17 +201,17 @@ function update() {
     let velocityY = 0;
 
     if (cursors.left.isDown) {
-        velocityX = -130;
+        velocityX = -110;
         player.setFlipX(true);
     } else if (cursors.right.isDown) {
-        velocityX = 130;
+        velocityX = 110;
         player.setFlipX(false);
     }
 
     if (cursors.up.isDown) {
-        velocityY = -130;
+        velocityY = -110;
     } else if (cursors.down.isDown) {
-        velocityY = 130;
+        velocityY = 110;
     }
 
     player.setVelocityX(velocityX);
@@ -219,12 +228,13 @@ function update() {
 
     // Lógica de perseguição do inimigo
     const distance = Phaser.Math.Distance.Between(enemy_run.x, enemy_run.y, player.x, player.y);
-    if (distance < 100000) { // Se o jogador estiver dentro de 300 pixels do inimigo
+    if (distance < 300) { // Se o jogador estiver dentro de 300 pixels do inimigo
+        enemy_run.anims.play('enemy_run', true);
         const angle = Phaser.Math.Angle.Between(enemy_run.x, enemy_run.y, player.x, player.y);
-        const speed = 80; // Ajuste a velocidade do inimigo conforme necessário
-        enemy_run.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        enemy_run.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
     } else {
         enemy_run.setVelocity(0); // Para o inimigo se o jogador estiver fora do alcance
+        enemy_run.anims.play('enemy_idle', true); // Animação de inimigo parado
     }
 }
 
@@ -232,7 +242,7 @@ function updateFlashlight() {
     flashlight.clear();
 
     if (isLightOn && energyLevel > 0) {
-        flashlight.fillStyle(0xffffff, 0.09);
+        flashlight.fillStyle(0xffffff, 0.1);
 
         const angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.mousePointer.x, this.input.mousePointer.y);
         const lightRadius = 150;
@@ -265,7 +275,8 @@ function updateFlashlight() {
 
                 const triangleEdges = [
                     new Phaser.Geom.Line(player.x, player.y, endX1, endY1),
-                    new Phaser.Geom.Line(player.x, player.y, endX2, endY2)
+                    new Phaser.Geom.Line(player.x, player.y, endX2, endY2),
+                    new Phaser.Geom.Line(endX1, endY1, endX2, endY2)
                 ];
 
                 const rectEdges = [
@@ -291,6 +302,36 @@ function updateFlashlight() {
                 }
             }
         });
+
+        // Check if the flashlight beam overlaps with the enemy
+        const enemyRect = enemy_run.getBounds();
+        const triangleEdges = [
+            new Phaser.Geom.Line(flashlightBeam.x1, flashlightBeam.y1, flashlightBeam.x2, flashlightBeam.y2),
+            new Phaser.Geom.Line(flashlightBeam.x2, flashlightBeam.y2, flashlightBeam.x3, flashlightBeam.y3),
+            new Phaser.Geom.Line(flashlightBeam.x3, flashlightBeam.y3, flashlightBeam.x1, flashlightBeam.y1)
+        ];
+
+        const rectEdges = [
+            new Phaser.Geom.Line(enemyRect.x, enemyRect.y, enemyRect.x + enemyRect.width, enemyRect.y),
+            new Phaser.Geom.Line(enemyRect.x + enemyRect.width, enemyRect.y, enemyRect.x + enemyRect.width, enemyRect.y + enemyRect.height),
+            new Phaser.Geom.Line(enemyRect.x + enemyRect.width, enemyRect.y + enemyRect.height, enemyRect.x, enemyRect.y + enemyRect.height),
+            new Phaser.Geom.Line(enemyRect.x, enemyRect.y + enemyRect.height, enemyRect.x, enemyRect.y)
+        ];
+
+        let isOverlapping = false;
+        for (let i = 0; i < triangleEdges.length; i++) {
+            for (let j = 0; j < rectEdges.length; j++) {
+                let intersection = new Phaser.Geom.Point();
+                if (Phaser.Geom.Intersects.LineToLine(triangleEdges[i], rectEdges[j], intersection)) {
+                    isOverlapping = true;
+                    break;
+                }
+            }
+        }
+
+        if (isOverlapping) {
+            enemy_run.setVelocity(0);
+        }
 
         // Draw the adjusted flashlight beam
         flashlightBeam = new Phaser.Geom.Triangle(
@@ -329,8 +370,10 @@ function updateFlashlight() {
     }
 }
 
+
 function updateEnergyBar() {
     // Atualiza a máscara da barra de energia conforme o nível atual de energia
+    
     energyMaskGraphics.clear();
     energyMaskGraphics.fillStyle(0x000000);
     energyMaskGraphics.fillRect(10, 0, 200 * (energyLevel / 100), 20);
@@ -359,8 +402,8 @@ function getValidPosition(map, walls) {
     let isValidPosition = false;
     
     while (!isValidPosition) {
-        const x = Phaser.Math.Between(0, map.widthInPixels);
-        const y = Phaser.Math.Between(0, map.heightInPixels);
+        const x = Phaser.Math.Between(10, map.widthInPixels);
+        const y = Phaser.Math.Between(10, map.heightInPixels);
 
         const tile = walls.getTileAtWorldXY(x, y);
 

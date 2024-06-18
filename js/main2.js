@@ -39,12 +39,13 @@ function create() {
     // Criar camadas
     const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
 
-    tilesprite = this.add.tileSprite(400, 300, 800, 800, 'tileset').setPipeline('Light2D');
+    tilesprite = this.add.tileSprite(400, 300, 800, 800, 'tileset');
+    tile = this.add.tileSprite(200, 200, 200, 200, 'tileset').setPipeline('Light2D');
     player = this.physics.add.sprite(400, 300, 'player').setScale(1.5);
     this.lights.enable();
     this.lights.setAmbientColor(0x404040);
 
-    spotlight = this.lights.addLight(0, 0, 70).setIntensity(7);
+    spotlight = this.lights.addLight(0, 0, 70).setIntensity(4);
 
     player.setCollideWorldBounds(true);
 
