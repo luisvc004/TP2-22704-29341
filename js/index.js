@@ -1,14 +1,9 @@
-import Phaser from 'phaser';
-import MainMenu from './MainMenu';
-import GameScene from './GameScene.js';
-import GameOver from './GameOver.js';
-
 const config = {
     type: Phaser.AUTO,
     width: 960,
     height: 640,
-    backgroundColor: '#000000',  // Dark background color for night environment
-    parent: 'game-container',                                
+    backgroundColor: '#000000',
+    parent: 'gameContainer',
     physics: {
         default: 'arcade',
         arcade: {
@@ -25,4 +20,5 @@ const config = {
 
 const game = new Phaser.Game(config);
 
+// Start the MainMenu scene
 game.scene.start('MainMenu');
