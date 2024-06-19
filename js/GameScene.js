@@ -12,7 +12,7 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
     }
 
-    create() {
+    create(data) {
         // Initial game setup
         
         const battery_number = 8;
@@ -54,33 +54,41 @@ class GameScene extends Phaser.Scene {
         
         const flashlight = this.add.graphics();
         
-        this.anims.create({ 
-            key: 'player_run', 
-            frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }), 
-            frameRate: 7, 
-            repeat: -1 
-        });
-        
-        this.anims.create({ 
-            key: 'player_idle', 
-            frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }), 
-            frameRate: 4, 
-            repeat: -1 
-        });
+        if (!this.anims.exists('player_run')) {
+            this.anims.create({ 
+                key: 'player_run', 
+                frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }), 
+                frameRate: 7, 
+                repeat: -1 
+            });
+        }
 
-        this.anims.create({ 
-            key: 'enemy_run', 
-            frames: this.anims.generateFrameNumbers('enemy_run', { frames: [1, 4, 7, 10, 13, 16, 19] }), 
-            frameRate: 7, 
-            repeat: -1 
-        });
-        
-        this.anims.create({ 
-            key: 'enemy_idle', 
-            frames: this.anims.generateFrameNumbers('enemy_idle', { frames: [1, 4, 7, 10] }), 
-            frameRate: 10, 
-            repeat: -1 
-        });
+        if (!this.anims.exists('player_idle')) {
+            this.anims.create({ 
+                key: 'player_idle', 
+                frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }), 
+                frameRate: 4, 
+                repeat: -1 
+            });
+        }
+
+        if (!this.anims.exists('enemy_run')) {
+            this.anims.create({ 
+                key: 'enemy_run', 
+                frames: this.anims.generateFrameNumbers('enemy_run', { frames: [1, 4, 7, 10, 13, 16, 19] }), 
+                frameRate: 7, 
+                repeat: -1 
+            });
+        }
+
+        if (!this.anims.exists('enemy_idle')) {
+            this.anims.create({ 
+                key: 'enemy_idle', 
+                frames: this.anims.generateFrameNumbers('enemy_idle', { frames: [1, 4, 7, 10] }), 
+                frameRate: 10, 
+                repeat: -1 
+            });
+        }
 
         player.anims.play('player_idle');
         enemyRun.anims.play('enemy_run');
@@ -182,6 +190,11 @@ class GameScene extends Phaser.Scene {
             this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
             this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
         }
+
+        if (distance < 30) {
+            this.handleGameOver();
+        }
+
     }
 
     updateFlashlight() {
@@ -241,16 +254,9 @@ class GameScene extends Phaser.Scene {
                 }
             });
             
-            const flashlightBeam = new Phaser.Geom.Triangle(
-                this.player.x, this.player.y,
-                endX1, endY1,
-                endX2, endY2
-            );
-            
             this.flashlight.beginPath();
-            this.flashlight.moveTo(flashlightBeam.x1, flashlightBeam.y1);
-            this.flashlight.lineTo(flashlightBeam.x2, flashlightBeam.y2);
-            this.flashlight.lineTo(flashlightBeam.x3, flashlightBeam.y3);
+            this.flashlight.arc(this.player.x, this.player.y, lightRadius, angle - 0.4, angle + 0.2, false);
+            this.flashlight.lineTo(this.player.x, this.player.y);
             this.flashlight.closePath();
             this.flashlight.fillPath();
 
@@ -262,19 +268,8 @@ class GameScene extends Phaser.Scene {
             // Flash warning when energy is low
             if (this.energyLevel <= 20 && this.energyLevel > 0) {
                 this.noBatteryText.setVisible(true);
-
-                // Fazer o texto piscar lentamente
-                this.noBatteryTween.timeScale = 0.5; // Reduz a velocidade da animação pela metade
                 this.noBatteryTween.play();
                 this.startFlashing();
-            } else if (this.energyLevel <= 0) {
-                this.noBatteryText.setVisible(false);
-                this.noBatteryTween.stop();
-                this.stopFlashing();
-
-                // Mostrar texto "No battery" quando a energia acabar
-                this.noBatteryText.setText('No battery');
-                this.noBatteryText.setVisible(true);
             } else {
                 this.noBatteryText.setVisible(false);
                 this.noBatteryTween.stop();
@@ -329,24 +324,26 @@ class GameScene extends Phaser.Scene {
 
     // Function to generate a valid random position
     getValidPosition(map, walls) {
-        let position;
-        let isValidPosition = false;
-        
-        while (!isValidPosition) {
-            const x = Phaser.Math.Between(10, map.widthInPixels);
-            const y = Phaser.Math.Between(10, map.heightInPixels);
+    let position;
+    let isValidPosition = false;
 
-            const tile = walls.getTileAtWorldXY(x, y);
+    while (!isValidPosition) {
+        const x = Phaser.Math.Between(10, map.widthInPixels);
+        const y = Phaser.Math.Between(10, map.heightInPixels);
 
-            if (!tile) {
-                position = { x: x, y: y };
-                isValidPosition = true;
-            }
+        const tile = walls.getTileAtWorldXY(x, y);
+
+        if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
+            position = { x: x, y: y };
+            isValidPosition = true;
         }
-        return position;
     }
+    return position;
+}
 
     handleGameOver() {
         this.scene.start('GameOver');
     }
 }
+
+window.GameScene = GameScene;
