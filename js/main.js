@@ -26,3 +26,4 @@ const config = {
 const game = new Phaser.Game(config);
 
 game.scene.start('MainMenu');
+const isAttacking = false;

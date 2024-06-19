@@ -8,12 +8,20 @@ class GameScene extends Phaser.Scene {
         this.load.image('battery', 'assets/battery.png');
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
         this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('enemy_run', 'assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
+        this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
+
+        this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
+
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
+
+        this.load.image('flashlight', 'assets/flashlights.png');
+
+
     }
 
     create() {
         // Initial game setup
+        this.physics.world.createDebugGraphic();
         
         const battery_number = 8;
 
@@ -31,8 +39,10 @@ class GameScene extends Phaser.Scene {
         
         const enemyPosition = this.getValidPosition(map, walls);
         
-        const enemyIdle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
-        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_run').setScale(1.6);
+        //const enemyIdle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
+        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6);
+        //this.add.image(400, 300, 'flashlight').setScale(0.1);
+
 
         const batteries = this.physics.add.group();
 
@@ -41,13 +51,16 @@ class GameScene extends Phaser.Scene {
             const battery = batteries.create(batteryPosition.x, batteryPosition.y, 'battery').setScale(0.055);
             battery.setInteractive();
             battery.on('pointerdown', () => this.collectBattery(battery));
+            battery.on('pointerover', () => battery.setScale(0.070));
+            battery.on('pointerout', () => battery.setScale(0.055));
         }
 
         this.cursors = cursors;
         this.physics.add.collider(player, walls);
         this.physics.add.collider(enemyRun, walls);
         this.physics.add.overlap(enemyRun, player, () => {
-            // Logic when enemy collides with player
+            this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
+           
         });
         
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
@@ -82,6 +95,13 @@ class GameScene extends Phaser.Scene {
             repeat: -1 
         });
 
+        this.anims.create({ 
+            key: 'enemy_attack', 
+            frames: this.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 7}), 
+            frameRate: 7, 
+            repeat: -1 
+        });
+
         player.anims.play('player_idle');
         enemyRun.anims.play('enemy_run');
 
@@ -93,7 +113,27 @@ class GameScene extends Phaser.Scene {
         
         energyBar.setMask(energyMask);
 
-        const noBatteryText = this.add.text(50, 50, 'Low Battery', { font: '18px Arial', fill: '#ff0000', align: 'left' }).setOrigin(0);
+
+     /*   const tooFarAwayText = this.add.text(this.player.x, this.player.y + 10, 'Too Far Away!', { 
+            font: '11px Arial',
+            fill: '#ff0000',
+            align: 'left'
+        }).setOrigin(0);
+
+        const tooFarAwayTween = this.tweens.add({ 
+            targets: tooFarAwayText, 
+            alpha: 0, 
+            duration: 500, 
+            ease: 'Linear', 
+            yoyo: true, 
+            repeat: -1
+        });*/
+
+        const noBatteryText = this.add.text(50, 50, 'Low Battery', {
+            font: '18px Arial',
+            fill: '#ff0000',
+            align: 'left' 
+        }).setOrigin(0);
         
         const noBatteryTween = this.tweens.add({ 
             targets: noBatteryText, 
@@ -101,7 +141,7 @@ class GameScene extends Phaser.Scene {
             duration: 500, 
             ease: 'Linear', 
             yoyo: true, 
-            repeat: -1 
+            repeat: -1
         });
 
         this.player = player;
@@ -146,6 +186,12 @@ class GameScene extends Phaser.Scene {
             player.setFlipX(false);
         }
 
+        if(this.enemyRun.x > player.x) {
+            this.enemyRun.setFlipX(true);
+        } else {
+            this.enemyRun.setFlipX(false);
+        }
+
         if (cursors.up.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) {
             velocityY = -110;
         } 
@@ -178,10 +224,12 @@ class GameScene extends Phaser.Scene {
             this.enemyRun.anims.play('enemy_run', true);
             const angle = Phaser.Math.Angle.Between(this.enemyRun.x, this.enemyRun.y, player.x, player.y);
             this.enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
+
         } else {
-            this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
+         //   this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
             this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
         }
+        
     }
 
     updateFlashlight() {
@@ -321,10 +369,11 @@ class GameScene extends Phaser.Scene {
                 this.noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
                 this.noBatteryTween.stop(0);  // E para a animação de piscar
             }
+        } else {
+          //  this.noBatteryTween.timeScale = 0.5; // Reduz a velocidade da animação pela metade
+          //  this.noBatteryTween.play();
         }
-        /*else if (Phaser.Math.Distance.Between(player.x, player.y, battery.x, battery.y) > 50) {
-            
-        }*/
+
     }
 
     // Function to generate a valid random position
