@@ -27,6 +27,14 @@ class MainMenu extends Phaser.Scene {
             backgroundSound.play();
             this.scene.start('GameScene', { backgroundSound: backgroundSound });
         });
+
+        // Add instructions button below the play button
+        const instructionsButton = this.add.image(width / 2, height / 2 + 150, 'instructions_button').setInteractive().setScale(0.5);
+        instructionsButton.on('pointerover', () => instructionsButton.setScale(0.6));
+        instructionsButton.on('pointerout', () => instructionsButton.setScale(0.5));
+        instructionsButton.on('pointerdown', () => {
+            this.scene.start('InstructionsScene');
+        });
     }
 
     shutdown() {

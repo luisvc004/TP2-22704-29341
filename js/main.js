@@ -15,7 +15,7 @@ const config = {
             debug: false
         }
     },
-    scene: [MainMenu, GameScene, GameOver],
+    scene: [MainMenu, InstructionsScene, GameScene, GameOver],
     callbacks: {
         postBoot: function (game) {
             game.canvas.style.cursor = 'none';

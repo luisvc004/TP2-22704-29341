@@ -15,7 +15,7 @@ class GameOver extends Phaser.Scene {
 
     create() {
         // Adiciona o texto GAME OVER e os botões primeiro, para que fiquem por baixo da animação
-        this.gameOverText = this.add.text(this.sys.game.config.width / 2, 280, 'GAME OVER', { fontSize: '64px', fill: '#ffffff' }).setOrigin(0.5).setVisible(false);
+        this.gameOverText = this.add.text(this.sys.game.config.width / 2, 280, 'GAME OVER!', { fontSize: '64px', fill: '#ffffff' }).setOrigin(0.5).setVisible(false);
         this.restartButton = this.add.image(this.sys.game.config.width / 2, 380, 'restart_button').setInteractive().setScale(0.5).setVisible(false);
         this.restartButton.on('pointerdown', () => this.scene.start('GameScene'));
         this.mainMenuButton = this.add.image(this.sys.game.config.width / 2, 460, 'main_menu_button').setInteractive().setScale(0.5).setVisible(false);
