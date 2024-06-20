@@ -6,15 +6,32 @@ class GameScene extends Phaser.Scene {
     preload() {
         this.load.image('tileset', 'assets/tileset.png');
         this.load.image('battery', 'assets/battery.png');
+        this.load.image('flashlight', 'assets/flashlights.png');
+
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
+        
         this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
         this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
-        this.load.image('flashlight', 'assets/flashlights.png');
+
+        this.load.audio('start_sound', 'assets/horror-background-atmosphere.mp3');
+        this.load.audio('game_over_sound', 'assets/jump-scare-sound.mp3');
+    }
+
+    init(data) {
+        this.backgroundSound = data.backgroundSound;
+        if (this.backgroundSound) {
+            this.backgroundSound.stop();
+        }
+        this.backgroundSound = this.sound.add('start_sound', { loop: true });
+        this.backgroundSound.play();
+        this.gameStarted = false;
     }
 
     create(data) {
+        // Initial game setup
+
         this.physics.world.createDebugGraphic();
 
         const battery_number = 8;
@@ -128,7 +145,7 @@ class GameScene extends Phaser.Scene {
             font: '18px Arial',
             fill: '#ff0000',
             align: 'left' 
-        }).setOrigin(0);
+        }).setVisible(false);
         
         const noBatteryTween = this.tweens.add({ 
             targets: noBatteryText, 
@@ -136,8 +153,8 @@ class GameScene extends Phaser.Scene {
             duration: 500, 
             ease: 'Linear', 
             yoyo: true, 
-            repeat: -1 
-        });
+            repeat: -1
+        }).stop();
 
         this.player = player;
         this.enemyRun = enemyRun;
@@ -157,11 +174,16 @@ class GameScene extends Phaser.Scene {
         this.spotlight = spotlight;
         this.spotlight2 = spotlight2;
         this.enemyRun = enemyRun;
+        this.startCountdown();
     }
 
     update() {
         const { cursors, player, toggleLightKey, spotlight, spotlight2, enemyRun } = this;
-    
+      
+        if (!this.gameStarted) {
+            return;
+        }
+
         if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
             this.isLightOn = !this.isLightOn;
             if (!this.isLightOn) {
@@ -249,6 +271,28 @@ class GameScene extends Phaser.Scene {
     }
     
 
+    startCountdown() {
+        const countdownText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, '3', {
+            fontSize: '64px', fill: '#ffffff'
+        }).setOrigin(0.5);
+
+        let countdown = 3;
+        const countdownTimer = this.time.addEvent({
+            delay: 1000, // 1 segundo
+            callback: () => {
+                countdown--;
+                countdownText.setText(countdown);
+                if (countdown === 0) {
+                    countdownTimer.remove();
+                    countdownText.destroy();
+                    this.gameStarted = true; // Unlock the game
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
+    }
+
     updateFlashlight() {
         this.flashlight.clear();
     
@@ -332,7 +376,6 @@ class GameScene extends Phaser.Scene {
     }
 
     updateEnergyBar() {
-        // Update energy bar mask based on current energy level
         this.energyMaskGraphics.clear();
         this.energyMaskGraphics.fillStyle(0x000000);
         this.energyMaskGraphics.fillRect(10, 0, 200 * (this.energyLevel / 100), 20);
@@ -362,13 +405,12 @@ class GameScene extends Phaser.Scene {
             battery.destroy(); // Remove a bateria do jogo
             this.updateEnergyBar(); // Atualiza a visualização da barra de energia
             if (this.energyLevel > 20) {
-                this.noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
-                this.noBatteryTween.stop(0);  // E para a animação de piscar
+                this.noBatteryText.setVisible(false); // Se a energia subir acima de 20%, esconde o texto de aviso
+                this.noBatteryTween.stop(0); // E para a animação de piscar
             }
         }
     }
 
-    // Function to generate a valid random position
     getValidPosition(map, walls) {
         let position;
         let isValidPosition = false;
@@ -388,6 +430,12 @@ class GameScene extends Phaser.Scene {
     }
 
     handleGameOver() {
+        if (this.backgroundSound) {
+            this.backgroundSound.stop();
+        }
+        this.gameOverSound = this.sound.add('game_over_sound');
+        this.gameOverSound.play();
+        
         this.scene.start('GameOver');
     }
 }
