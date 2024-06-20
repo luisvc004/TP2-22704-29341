@@ -44,6 +44,7 @@ class GameScene extends Phaser.Scene {
         const enemyPosition = this.getValidPosition(map, walls);
         
         const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6).setPipeline('Light2D');
+        enemyRun.setInteractive();
 
         const batteries = this.physics.add.group();
 
@@ -56,6 +57,7 @@ class GameScene extends Phaser.Scene {
             battery.on('pointerover', () => battery.setScale(0.070));
             battery.on('pointerout', () => battery.setScale(0.055));
         }
+
 
         this.cursors = cursors;
         this.physics.add.collider(player, walls);
@@ -154,11 +156,12 @@ class GameScene extends Phaser.Scene {
         this.batteries = batteries;
         this.spotlight = spotlight;
         this.spotlight2 = spotlight2;
+        this.enemyRun = enemyRun;
     }
 
     update() {
-        const { cursors, player, toggleLightKey, spotlight, spotlight2 } = this;
-
+        const { cursors, player, toggleLightKey, spotlight, spotlight2, enemyRun } = this;
+    
         if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
             this.isLightOn = !this.isLightOn;
             if (!this.isLightOn) {
@@ -167,11 +170,11 @@ class GameScene extends Phaser.Scene {
                 this.energyLevel = this.initialEnergyLevel;
             }
         }
-
+    
         player.setVelocity(0);
         let velocityX = 0;
         let velocityY = 0;
-
+    
         if (cursors.left.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) {
             velocityX = -110;
             player.setFlipX(true);
@@ -180,65 +183,71 @@ class GameScene extends Phaser.Scene {
             velocityX = 110;
             player.setFlipX(false);
         }
-
+    
         if(this.enemyRun.x > player.x) {
             this.enemyRun.setFlipX(true);
         } else {
             this.enemyRun.setFlipX(false);
         }
-
+    
         if (cursors.up.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) {
             velocityY = -110;
         } 
         else if (cursors.down.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) {
             velocityY = 110;
         }
-
+    
         player.setVelocityX(velocityX);
         player.setVelocityY(velocityY);
-
+    
         if (velocityX !== 0 || velocityY !== 0) {
             player.anims.play('player_run', true);
         } else {
             player.anims.play('player_idle', true);
         }
-
+    
         const cursor = this.input.activePointer;
         const angle = Phaser.Math.Angle.Between(player.x, player.y, cursor.x, cursor.y);
         const spotlightRadius = 40; // Set the radius for the spotlight
         const spotlight2Radius = 100;
-        
-
+    
         spotlight.x = player.x + spotlightRadius * Math.cos(angle);
         spotlight.y = player.y + spotlightRadius * Math.sin(angle);
-
+    
         spotlight2.x = player.x + spotlight2Radius * Math.cos(angle - 0.2); // Slight offset for the second spotlight
         spotlight2.y = player.y + spotlight2Radius * Math.sin(angle - 0.2);
-
+    
         this.updateEnergyBar();
         this.updateFlashlight.call(this);
-        
+    
         const distance = Phaser.Math.Distance.Between(
             this.enemyRun.x,
             this.enemyRun.y,
             this.player.x,
             this.player.y
         );
-
+    
         const enemy_speed = 60; // Define enemy speed here
-
-        if (distance < 100000) {
-            this.enemyRun.anims.play('enemy_run', true);
-            const angle = Phaser.Math.Angle.Between(this.enemyRun.x, this.enemyRun.y, player.x, player.y);
-            this.enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
+    
+        // Check if the cursor is over the enemy and the light is on
+        if (this.isLightOn && enemyRun.getBounds().contains(cursor.x, cursor.y)) {
+            enemyRun.setVelocity(0, 0);
+            enemyRun.anims.play('enemy_idle', true);
         } else {
-            this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
+            if (distance < 100000) {
+                enemyRun.anims.play('enemy_run', true);
+                const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
+                enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
+            } else {
+                enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
+            }
         }
-
+    
         if (distance < 30) {
             this.handleGameOver();
         }
     }
+    
 
     updateFlashlight() {
         this.flashlight.clear();
