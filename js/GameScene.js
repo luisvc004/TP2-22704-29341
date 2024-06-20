@@ -32,8 +32,6 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-        this.physics.world.createDebugGraphic();
-
         const battery_number = 8;
 
         const cursors = this.input.keyboard.createCursorKeys();
@@ -53,7 +51,6 @@ class GameScene extends Phaser.Scene {
 
         let spotlight = this.lights.addLight(player.x, player.y, 70).setIntensity(4);
         let spotlight2 = this.lights.addLight(player.x, player.y, 100).setIntensity(2);
-        
 
         this.lights.addLight(430, 25, 70).setIntensity(1);
         this.lights.addLight(530, 25, 70).setIntensity(1);
@@ -74,7 +71,6 @@ class GameScene extends Phaser.Scene {
             battery.on('pointerover', () => battery.setScale(0.070));
             battery.on('pointerout', () => battery.setScale(0.055));
         }
-
 
         this.cursors = cursors;
         this.physics.add.collider(player, walls);
@@ -133,9 +129,9 @@ class GameScene extends Phaser.Scene {
         player.anims.play('player_idle');
         enemyRun.anims.play('enemy_run');
 
-        const energyBar = this.add.graphics().fillStyle(0xffffff).fillRect(player.x, player.y, 200, 200);
+        const energyBar = this.add.graphics().fillStyle(0xffffff).fillRect(player.x - 25, player.y - 30, 50, 5);
         
-        const energyMaskGraphics = this.make.graphics().fillStyle(0x000000).fillRect(0, 0, 200, 20);
+        const energyMaskGraphics = this.make.graphics().fillStyle(0x000000).fillRect(player.x - 25, player.y - 30, 50, 5);
         
         const energyMask = energyMaskGraphics.createGeometryMask();
         
@@ -191,6 +187,7 @@ class GameScene extends Phaser.Scene {
             } else if (this.initialEnergyLevel > 0) {
                 this.energyLevel = this.initialEnergyLevel;
             }
+            this.updateSpotlights();
         }
     
         player.setVelocity(0);
@@ -228,19 +225,8 @@ class GameScene extends Phaser.Scene {
             player.anims.play('player_idle', true);
         }
     
-        const cursor = this.input.activePointer;
-        const angle = Phaser.Math.Angle.Between(player.x, player.y, cursor.x, cursor.y);
-        const spotlightRadius = 40; // Set the radius for the spotlight
-        const spotlight2Radius = 100;
-    
-        spotlight.x = player.x + spotlightRadius * Math.cos(angle);
-        spotlight.y = player.y + spotlightRadius * Math.sin(angle);
-    
-        spotlight2.x = player.x + spotlight2Radius * Math.cos(angle - 0.2); // Slight offset for the second spotlight
-        spotlight2.y = player.y + spotlight2Radius * Math.sin(angle - 0.2);
-    
         this.updateEnergyBar();
-        this.updateFlashlight.call(this);
+        this.updateFlashlight();
     
         const distance = Phaser.Math.Distance.Between(
             this.enemyRun.x,
@@ -252,6 +238,7 @@ class GameScene extends Phaser.Scene {
         const enemy_speed = 60; // Define enemy speed here
     
         // Check if the cursor is over the enemy and the light is on
+        const cursor = this.input.activePointer;
         if (this.isLightOn && enemyRun.getBounds().contains(cursor.x, cursor.y)) {
             enemyRun.setVelocity(0, 0);
             enemyRun.anims.play('enemy_idle', true);
@@ -268,8 +255,36 @@ class GameScene extends Phaser.Scene {
         if (distance < 30) {
             this.handleGameOver();
         }
+
+        // Update energy bar position
+        this.energyBar.x = player.x - 25; // Adjust position as needed
+        this.energyBar.y = player.y - 30; // Adjust position as needed
+        this.energyMaskGraphics.x = this.energyBar.x;
+        this.energyMaskGraphics.y = this.energyBar.y;
+
+        this.updateSpotlights();
     }
+
+    updateSpotlights() {
+        if (this.isLightOn && this.energyLevel > 0) {
+            const cursor = this.input.activePointer;
+            const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, cursor.x, cursor.y);
+            const spotlightRadius = 40; // Set the radius for the spotlight
+            const spotlight2Radius = 100;
     
+            this.spotlight.x = this.player.x + spotlightRadius * Math.cos(angle);
+            this.spotlight.y = this.player.y + spotlightRadius * Math.sin(angle);
+    
+            this.spotlight2.x = this.player.x + spotlight2Radius * Math.cos(angle - 0.2); // Slight offset for the second spotlight
+            this.spotlight2.y = this.player.y + spotlight2Radius * Math.sin(angle - 0.2);
+
+            this.spotlight.setVisible(true);
+            this.spotlight2.setVisible(true);
+        } else {
+            this.spotlight.setVisible(false);
+            this.spotlight2.setVisible(false);
+        }
+    }
 
     startCountdown() {
         const countdownText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, '3', {
@@ -294,68 +309,7 @@ class GameScene extends Phaser.Scene {
     }
 
     updateFlashlight() {
-        this.flashlight.clear();
-    
         if (this.isLightOn && this.energyLevel > 0) {
-            this.flashlight.fillStyle(0xffffff, 0.1);
-    
-            const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, this.input.mousePointer.x, this.input.mousePointer.y);
-            const lightRadius = 150;
-    
-            const startAngle = angle - 0.4;
-            const endAngle = angle + 0.2;
-    
-            let endX1 = this.player.x + lightRadius * Math.cos(startAngle);
-            let endY1 = this.player.y + lightRadius * Math.sin(startAngle);
-            let endX2 = this.player.x + lightRadius * Math.cos(endAngle);
-            let endY2 = this.player.y + lightRadius * Math.sin(endAngle);
-                
-            // Adjust beam based on wall collisions
-            this.walls.forEachTile(tile => {
-                if (tile.index !== -1) {
-                    const tileRect = new Phaser.Geom.Rectangle(
-                        tile.getLeft(),
-                        tile.getTop(),
-                        tile.width,
-                        tile.height
-                    );
-                    
-                    const triangleEdges = [
-                        new Phaser.Geom.Line(this.player.x, this.player.y, endX1, endY1),
-                        new Phaser.Geom.Line(this.player.x, this.player.y, endX2, endY2),
-                        new Phaser.Geom.Line(endX1, endY1, endX2, endY2)
-                    ];
-                
-                    const rectEdges = [
-                        new Phaser.Geom.Line(tileRect.x, tileRect.y, tileRect.x + tileRect.width, tileRect.y),
-                        new Phaser.Geom.Line(tileRect.x + tileRect.width, tileRect.y, tileRect.x + tileRect.width, tileRect.y + tileRect.height),
-                        new Phaser.Geom.Line(tileRect.x + tileRect.width, tileRect.y + tileRect.height, tileRect.x, tileRect.y + tileRect.height),
-                        new Phaser.Geom.Line(tileRect.x, tileRect.y + tileRect.height, tileRect.x, tileRect.y)
-                    ];
-                
-                    for (let i = 0; i < triangleEdges.length; i++) {
-                        for (let j = 0; j < rectEdges.length; j++) {
-                            let intersection = new Phaser.Geom.Point();
-                            if (Phaser.Geom.Intersects.LineToLine(triangleEdges[i], rectEdges[j], intersection)) {
-                                if (i === 0) {
-                                    endX1 = intersection.x;
-                                    endY1 = intersection.y;
-                                } else {
-                                    endX2 = intersection.x;
-                                    endY2 = intersection.y;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            this.flashlight.beginPath();
-            this.flashlight.arc(this.player.x, this.player.y, lightRadius, angle - 0.4, angle + 0.2, false);
-            this.flashlight.lineTo(this.player.x, this.player.y);
-            this.flashlight.closePath();
-            this.flashlight.fillPath();
-
             this.energyLevel -= 0.1; // Adjust as needed
 
             // Ensure energy doesn't go below 0
@@ -378,24 +332,26 @@ class GameScene extends Phaser.Scene {
     updateEnergyBar() {
         this.energyMaskGraphics.clear();
         this.energyMaskGraphics.fillStyle(0x000000);
-        this.energyMaskGraphics.fillRect(10, 0, 200 * (this.energyLevel / 100), 20);
+        this.energyMaskGraphics.fillRect(0, 0, 50 * (this.energyLevel / 100), 5);
 
         this.energyBar.clear();
         this.energyBar.fillStyle(0xffffff);
-        this.energyBar.fillRect(10, 10, 200 * (this.energyLevel / 100), 20);
+        this.energyBar.fillRect(0, 0, 50 * (this.energyLevel / 100), 5);
 
         this.energyBar.setMask(this.energyMask);
     }
 
     startFlashing() {
         this.flashingInterval = setInterval(() => {
-            this.flashlight.visible = !this.flashlight.visible; // Toggle visibility
+            this.spotlight.visible = !this.spotlight.visible; // Toggle visibility
+            this.spotlight2.visible = !this.spotlight2.visible; // Toggle visibility
         }, 100); // Flash interval of 100ms
     }
 
     stopFlashing() {
         clearInterval(this.flashingInterval);
-        this.flashlight.visible = true; // Ensure flashlight is visible if not flashing
+        this.spotlight.visible = true; // Ensure spotlight is visible if not flashing
+        this.spotlight2.visible = true; // Ensure spotlight2 is visible if not flashing
     }
 
     collectBattery(battery) {
