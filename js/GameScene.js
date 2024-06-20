@@ -50,9 +50,7 @@ class GameScene extends Phaser.Scene {
         
         const enemyPosition = this.getValidPosition(map, walls);
         
-        //const enemyIdle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
         const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6);
-        //this.add.image(400, 300, 'flashlight').setScale(0.1);
 
         const batteries = this.physics.add.group();
 
@@ -69,9 +67,7 @@ class GameScene extends Phaser.Scene {
         this.physics.add.collider(player, walls);
         this.physics.add.collider(enemyRun, walls);
         this.physics.add.overlap(enemyRun, player, () => {
-            this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
-           
-            // Logic when enemy collides with player
+            this.enemyRun.anims.play('enemy_attack');
         });
         
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
@@ -151,7 +147,7 @@ class GameScene extends Phaser.Scene {
             font: '18px Arial',
             fill: '#ff0000',
             align: 'left' 
-        }).setOrigin(0);
+        }).setVisible(false);
         
         const noBatteryTween = this.tweens.add({ 
             targets: noBatteryText, 
@@ -160,7 +156,7 @@ class GameScene extends Phaser.Scene {
             ease: 'Linear', 
             yoyo: true, 
             repeat: -1
-        });
+        }).stop();
 
         this.player = player;
         this.enemyRun = enemyRun;
@@ -181,6 +177,10 @@ class GameScene extends Phaser.Scene {
     }
 
     update() {
+        if (!this.gameStarted) {
+            return;
+        }
+
         const { cursors, player, toggleLightKey } = this;
 
         if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
@@ -244,8 +244,7 @@ class GameScene extends Phaser.Scene {
             const angle = Phaser.Math.Angle.Between(this.enemyRun.x, this.enemyRun.y, player.x, player.y);
             this.enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
         } else {
-            // this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
-            this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
+            this.enemyRun.anims.play('enemy_idle', true);
         }
 
         if (distance < 30) {
@@ -362,7 +361,6 @@ class GameScene extends Phaser.Scene {
     }
 
     updateEnergyBar() {
-        // Update energy bar mask based on current energy level
         this.energyMaskGraphics.clear();
         this.energyMaskGraphics.fillStyle(0x000000);
         this.energyMaskGraphics.fillRect(10, 0, 200 * (this.energyLevel / 100), 20);
@@ -392,43 +390,39 @@ class GameScene extends Phaser.Scene {
             battery.destroy(); // Remove a bateria do jogo
             this.updateEnergyBar(); // Atualiza a visualização da barra de energia
             if (this.energyLevel > 20) {
-                this.noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
-                this.noBatteryTween.stop(0);  // E para a animação de piscar
+                this.noBatteryText.setVisible(false); // Se a energia subir acima de 20%, esconde o texto de aviso
+                this.noBatteryTween.stop(0); // E para a animação de piscar
             }
-        } else {
-          //  this.noBatteryTween.timeScale = 0.5; // Reduz a velocidade da animação pela metade
-          //  this.noBatteryTween.play();
-        }
+        } 
     }
 
-    // Function to generate a valid random position
     getValidPosition(map, walls) {
-    let position;
-    let isValidPosition = false;
+        let position;
+        let isValidPosition = false;
 
-    while (!isValidPosition) {
-        const x = Phaser.Math.Between(10, map.widthInPixels);
-        const y = Phaser.Math.Between(10, map.heightInPixels);
+        while (!isValidPosition) {
+            const x = Phaser.Math.Between(10, map.widthInPixels);
+            const y = Phaser.Math.Between(10, map.heightInPixels);
 
-        const tile = walls.getTileAtWorldXY(x, y);
+            const tile = walls.getTileAtWorldXY(x, y);
 
-        if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
-            position = { x: x, y: y };
-            isValidPosition = true;
+            if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
+                position = { x: x, y: y };
+                isValidPosition = true;
+            }
         }
+        return position;
     }
-    return position;
-}
 
-handleGameOver() {
-    if (this.backgroundSound) {
-        this.backgroundSound.stop();
+    handleGameOver() {
+        if (this.backgroundSound) {
+            this.backgroundSound.stop();
+        }
+        this.gameOverSound = this.sound.add('game_over_sound');
+        this.gameOverSound.play();
+        
+        this.scene.start('GameOver');
     }
-    this.gameOverSound = this.sound.add('game_over_sound');
-    this.gameOverSound.play();
-    
-    this.scene.start('GameOver');
-}
 }
 
 window.GameScene = GameScene;
