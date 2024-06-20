@@ -6,21 +6,32 @@ class GameScene extends Phaser.Scene {
     preload() {
         this.load.image('tileset', 'assets/tileset.png');
         this.load.image('battery', 'assets/battery.png');
-        this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
-        this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
-
-        this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
-
-        this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
-
         this.load.image('flashlight', 'assets/flashlights.png');
 
+        this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
+        
+        this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
+        this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
+        this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
 
+        this.load.audio('start_sound', 'assets/horror-background-atmosphere.mp3');
+        this.load.audio('game_over_sound', 'assets/jump-scare-sound.mp3');
+    }
+
+    init(data) {
+        this.backgroundSound = data.backgroundSound;
+        if (this.backgroundSound) {
+            this.backgroundSound.stop();
+        }
+        this.backgroundSound = this.sound.add('start_sound', { loop: true });
+        this.backgroundSound.play();
+        this.gameStarted = false;
     }
 
     create(data) {
         // Initial game setup
+
         this.physics.world.createDebugGraphic();
         
         const battery_number = 8;
@@ -43,7 +54,6 @@ class GameScene extends Phaser.Scene {
         const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6);
         //this.add.image(400, 300, 'flashlight').setScale(0.1);
 
-
         const batteries = this.physics.add.group();
 
         for (let i = 0; i < battery_number; i++) { // Changed to iterate from 0 to 7 (8 batteries)
@@ -61,6 +71,7 @@ class GameScene extends Phaser.Scene {
         this.physics.add.overlap(enemyRun, player, () => {
             this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
            
+            // Logic when enemy collides with player
         });
         
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
@@ -121,8 +132,7 @@ class GameScene extends Phaser.Scene {
         
         energyBar.setMask(energyMask);
 
-
-     /*   const tooFarAwayText = this.add.text(this.player.x, this.player.y + 10, 'Too Far Away!', { 
+        /*   const tooFarAwayText = this.add.text(this.player.x, this.player.y + 10, 'Too Far Away!', { 
             font: '11px Arial',
             fill: '#ff0000',
             align: 'left'
@@ -167,6 +177,7 @@ class GameScene extends Phaser.Scene {
         this.toggleLightKey = toggleLightKey;
         this.walls = walls;
         this.batteries = batteries;
+        this.startCountdown();
     }
 
     update() {
@@ -232,9 +243,8 @@ class GameScene extends Phaser.Scene {
             this.enemyRun.anims.play('enemy_run', true);
             const angle = Phaser.Math.Angle.Between(this.enemyRun.x, this.enemyRun.y, player.x, player.y);
             this.enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
-
         } else {
-         //   this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
+            // this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
             this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
         }
 
@@ -242,6 +252,28 @@ class GameScene extends Phaser.Scene {
             this.handleGameOver();
         }
 
+    }
+
+    startCountdown() {
+        const countdownText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, '3', {
+            fontSize: '64px', fill: '#ffffff'
+        }).setOrigin(0.5);
+
+        let countdown = 3;
+        const countdownTimer = this.time.addEvent({
+            delay: 1000, // 1 segundo
+            callback: () => {
+                countdown--;
+                countdownText.setText(countdown);
+                if (countdown === 0) {
+                    countdownTimer.remove();
+                    countdownText.destroy();
+                    this.gameStarted = true; // Unlock the game
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
     }
 
     updateFlashlight() {
@@ -367,7 +399,6 @@ class GameScene extends Phaser.Scene {
           //  this.noBatteryTween.timeScale = 0.5; // Reduz a velocidade da animação pela metade
           //  this.noBatteryTween.play();
         }
-
     }
 
     // Function to generate a valid random position
@@ -389,9 +420,15 @@ class GameScene extends Phaser.Scene {
     return position;
 }
 
-    handleGameOver() {
-        this.scene.start('GameOver');
+handleGameOver() {
+    if (this.backgroundSound) {
+        this.backgroundSound.stop();
     }
+    this.gameOverSound = this.sound.add('game_over_sound');
+    this.gameOverSound.play();
+    
+    this.scene.start('GameOver');
+}
 }
 
 window.GameScene = GameScene;
