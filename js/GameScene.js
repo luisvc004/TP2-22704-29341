@@ -32,7 +32,7 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-        this.physics.world.createDebugGraphic();
+       // this.physics.world.createDebugGraphic();
 
         const battery_number = 8;
 
@@ -43,17 +43,19 @@ class GameScene extends Phaser.Scene {
 
         const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
-        const walls = map.createLayer('Wall', tileset, 0, 0).setPipeline('Light2D');
+        const walls = map.createLayer('Wall', tileset, 0, 0);
         walls.setCollisionByExclusion([-1]);
 
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
         
         this.lights.enable();
         // this.lights.setAmbientColor(0x212020);
-        // this.lights.setAmbientColor(0x000000);
+         this.lights.setAmbientColor(0x000000);
 
         let spotlight = this.lights.addLight(player.x, player.y, 60).setIntensity(4);
         let spotlight2 = this.lights.addLight(player.x, player.y, 90).setIntensity(3);
+
+        let pl
 
         this.lights.addLight(430, 25, 70).setIntensity(1);
         this.lights.addLight(530, 25, 70).setIntensity(1);
