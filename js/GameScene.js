@@ -9,46 +9,48 @@ class GameScene extends Phaser.Scene {
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
         this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
         this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
-
         this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
-
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
-
         this.load.image('flashlight', 'assets/flashlights.png');
-
-
     }
 
     create(data) {
-        // Initial game setup
         this.physics.world.createDebugGraphic();
-        
+
         const battery_number = 8;
 
         const cursors = this.input.keyboard.createCursorKeys();
 
         const map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('tileset', 'tileset');
-        
-        const backgroundLayer = map.createLayer('Ground', tileset, 0, 0);
-        
-        const walls = map.createLayer('Wall', tileset, 0, 0);
+
+        const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
+        const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
+        const walls = map.createLayer('Wall', tileset, 0, 0).setPipeline('Light2D');
         walls.setCollisionByExclusion([-1]);
 
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
         
+        this.lights.enable();
+        this.lights.setAmbientColor(0x000000);
+
+        let spotlight = this.lights.addLight(player.x, player.y, 70).setIntensity(4);
+        let spotlight2 = this.lights.addLight(player.x, player.y, 100).setIntensity(2);
+        
+
+        this.lights.addLight(430, 25, 70).setIntensity(1);
+        this.lights.addLight(530, 25, 70).setIntensity(1);
+
         const enemyPosition = this.getValidPosition(map, walls);
         
-        //const enemyIdle = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, 'enemy_idle').setScale(1.3);
-        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6);
-        //this.add.image(400, 300, 'flashlight').setScale(0.1);
-
+        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6).setPipeline('Light2D');
 
         const batteries = this.physics.add.group();
 
         for (let i = 0; i < battery_number; i++) { // Changed to iterate from 0 to 7 (8 batteries)
             const batteryPosition = this.getValidPosition(map, walls);
             const battery = batteries.create(batteryPosition.x, batteryPosition.y, 'battery').setScale(0.055);
+            battery.setPipeline('Light2D');
             battery.setInteractive();
             battery.on('pointerdown', () => this.collectBattery(battery));
             battery.on('pointerover', () => battery.setScale(0.070));
@@ -59,8 +61,7 @@ class GameScene extends Phaser.Scene {
         this.physics.add.collider(player, walls);
         this.physics.add.collider(enemyRun, walls);
         this.physics.add.overlap(enemyRun, player, () => {
-            this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
-           
+          //  this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
         });
         
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
@@ -121,22 +122,6 @@ class GameScene extends Phaser.Scene {
         
         energyBar.setMask(energyMask);
 
-
-     /*   const tooFarAwayText = this.add.text(this.player.x, this.player.y + 10, 'Too Far Away!', { 
-            font: '11px Arial',
-            fill: '#ff0000',
-            align: 'left'
-        }).setOrigin(0);
-
-        const tooFarAwayTween = this.tweens.add({ 
-            targets: tooFarAwayText, 
-            alpha: 0, 
-            duration: 500, 
-            ease: 'Linear', 
-            yoyo: true, 
-            repeat: -1
-        });*/
-
         const noBatteryText = this.add.text(50, 50, 'Low Battery', {
             font: '18px Arial',
             fill: '#ff0000',
@@ -149,7 +134,7 @@ class GameScene extends Phaser.Scene {
             duration: 500, 
             ease: 'Linear', 
             yoyo: true, 
-            repeat: -1
+            repeat: -1 
         });
 
         this.player = player;
@@ -167,10 +152,12 @@ class GameScene extends Phaser.Scene {
         this.toggleLightKey = toggleLightKey;
         this.walls = walls;
         this.batteries = batteries;
+        this.spotlight = spotlight;
+        this.spotlight2 = spotlight2;
     }
 
     update() {
-        const { cursors, player, toggleLightKey } = this;
+        const { cursors, player, toggleLightKey, spotlight, spotlight2 } = this;
 
         if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
             this.isLightOn = !this.isLightOn;
@@ -215,7 +202,19 @@ class GameScene extends Phaser.Scene {
         } else {
             player.anims.play('player_idle', true);
         }
+
+        const cursor = this.input.activePointer;
+        const angle = Phaser.Math.Angle.Between(player.x, player.y, cursor.x, cursor.y);
+        const spotlightRadius = 40; // Set the radius for the spotlight
+        const spotlight2Radius = 100;
         
+
+        spotlight.x = player.x + spotlightRadius * Math.cos(angle);
+        spotlight.y = player.y + spotlightRadius * Math.sin(angle);
+
+        spotlight2.x = player.x + spotlight2Radius * Math.cos(angle - 0.2); // Slight offset for the second spotlight
+        spotlight2.y = player.y + spotlight2Radius * Math.sin(angle - 0.2);
+
         this.updateEnergyBar();
         this.updateFlashlight.call(this);
         
@@ -226,22 +225,19 @@ class GameScene extends Phaser.Scene {
             this.player.y
         );
 
-        const enemy_speed = 80; // Define enemy speed here
+        const enemy_speed = 60; // Define enemy speed here
 
         if (distance < 100000) {
             this.enemyRun.anims.play('enemy_run', true);
             const angle = Phaser.Math.Angle.Between(this.enemyRun.x, this.enemyRun.y, player.x, player.y);
             this.enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
-
         } else {
-         //   this.enemyRun.setVelocity(0); // Stop enemy if player is out of range
             this.enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
         }
 
         if (distance < 30) {
             this.handleGameOver();
         }
-
     }
 
     updateFlashlight() {
@@ -315,16 +311,13 @@ class GameScene extends Phaser.Scene {
             // Flash warning when energy is low
             if (this.energyLevel <= 20 && this.energyLevel > 0) {
                 this.noBatteryText.setVisible(true);
-                this.noBatteryTween.play();
                 this.startFlashing();
             } else {
                 this.noBatteryText.setVisible(false);
-                this.noBatteryTween.stop();
                 this.stopFlashing();
             }
         } else {
             this.noBatteryText.setVisible(false);
-            this.noBatteryTween.stop();
             this.stopFlashing();
         }
     }
@@ -363,31 +356,27 @@ class GameScene extends Phaser.Scene {
                 this.noBatteryText.setVisible(false);  // Se a energia subir acima de 20%, esconde o texto de aviso
                 this.noBatteryTween.stop(0);  // E para a animação de piscar
             }
-        } else {
-          //  this.noBatteryTween.timeScale = 0.5; // Reduz a velocidade da animação pela metade
-          //  this.noBatteryTween.play();
         }
-
     }
 
     // Function to generate a valid random position
     getValidPosition(map, walls) {
-    let position;
-    let isValidPosition = false;
+        let position;
+        let isValidPosition = false;
 
-    while (!isValidPosition) {
-        const x = Phaser.Math.Between(10, map.widthInPixels);
-        const y = Phaser.Math.Between(10, map.heightInPixels);
+        while (!isValidPosition) {
+            const x = Phaser.Math.Between(10, map.widthInPixels);
+            const y = Phaser.Math.Between(10, map.heightInPixels);
 
-        const tile = walls.getTileAtWorldXY(x, y);
+            const tile = walls.getTileAtWorldXY(x, y);
 
-        if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
-            position = { x: x, y: y };
-            isValidPosition = true;
+            if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
+                position = { x: x, y: y };
+                isValidPosition = true;
+            }
         }
+        return position;
     }
-    return position;
-}
 
     handleGameOver() {
         this.scene.start('GameOver');

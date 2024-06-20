@@ -46,6 +46,7 @@ function create() {
     this.lights.setAmbientColor(0x404040);
 
     spotlight = this.lights.addLight(0, 0, 70).setIntensity(4);
+    spotlight.displayHeight = 200; 
 
     player.setCollideWorldBounds(true);
 
