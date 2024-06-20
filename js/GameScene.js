@@ -119,12 +119,14 @@ class GameScene extends Phaser.Scene {
             });
         }
 
-        this.anims.create({ 
-            key: 'enemy_attack', 
-            frames: this.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 7}), 
-            frameRate: 7, 
-            repeat: -1 
-        });
+        if (!this.anims.exists('enemy_attack')) {
+            this.anims.create({ 
+                key: 'enemy_attack', 
+                frames: this.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 7}), 
+                frameRate: 7, 
+                repeat: -1 
+            });
+        }
 
         player.anims.play('player_idle');
         enemyRun.anims.play('enemy_run');
