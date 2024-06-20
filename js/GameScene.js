@@ -6,7 +6,7 @@ class GameScene extends Phaser.Scene {
     preload() {
         this.load.image('tileset', 'assets/tileset.png');
         this.load.image('battery', 'assets/battery.png');
-    //   this.load.image('flashlight', 'assets/flashlights.png');
+        // this.load.image('flashlight', 'assets/flashlights.png');
 
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
         
@@ -49,8 +49,8 @@ class GameScene extends Phaser.Scene {
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
         
         this.lights.enable();
-        //this.lights.setAmbientColor(0x212020);
-      //  this.lights.setAmbientColor(0x000000);
+        // this.lights.setAmbientColor(0x212020);
+        // this.lights.setAmbientColor(0x000000);
 
         let spotlight = this.lights.addLight(player.x, player.y, 60).setIntensity(4);
         let spotlight2 = this.lights.addLight(player.x, player.y, 90).setIntensity(3);
@@ -80,12 +80,12 @@ class GameScene extends Phaser.Scene {
         this.physics.add.collider(player, walls);
         this.physics.add.collider(enemyRun, walls);
         this.physics.add.overlap(enemyRun, player, () => {
-          //  this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
+            // this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
         });
         
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         
-       // const flashlight = this.add.graphics();
+        // const flashlight = this.add.graphics();
         
         if (!this.anims.exists('player_run')) {
             this.anims.create({ 
@@ -153,12 +153,12 @@ class GameScene extends Phaser.Scene {
             duration: 500, 
             ease: 'Linear', 
             yoyo: true, 
-            repeat: -1
+            repeat: -1 
         }).stop();
 
         this.player = player;
-       // this.enemyRun = enemyRun;
-       // this.flashlight = flashlight;
+        // this.enemyRun = enemyRun;
+        // this.flashlight = flashlight;
         this.energyBar = energyBar;
         this.energyMaskGraphics = energyMaskGraphics;
         this.energyMask = energyMask;
@@ -184,7 +184,7 @@ class GameScene extends Phaser.Scene {
             return;
         }
 
-        if (Phaser.Input.Keyboard.JustDown(toggleLightKey)) {
+        if (Phaser.Input.Keyboard.JustDown(toggleLightKey) && this.energyLevel > 0) {
             this.isLightOn = !this.isLightOn;
             if (!this.isLightOn) {
                 this.initialEnergyLevel = this.energyLevel;
@@ -241,34 +241,19 @@ class GameScene extends Phaser.Scene {
     
         const enemy_speed = 60; // Define enemy speed here
     
-        // Check if the flashlight is over the enemy and the light is on
-        //const cursor = this.input.activePointer;
-        if (this.isLightOn && enemyRun.getBounds().contains(spotlight.x, spotlight.y) || enemyRun.getBounds().contains(spotlight2.x, spotlight2.y) ) {
+        if (this.isLightOn && this.energyLevel > 0 && (enemyRun.getBounds().contains(spotlight.x, spotlight.y) || enemyRun.getBounds().contains(spotlight2.x, spotlight2.y))) {
             enemyRun.setVelocity(0, 0);
             enemyRun.anims.play('enemy_idle', true);
         } else {
-           // spotlight.x = 100000;
-           // spotlight2.x = 100000;
-           // console.log(spotlight.x, spotlight.y);
-           // console.log(spotlight2.x, spotlight2.y);
-           // if (distance < 300) {
-                enemyRun.anims.play('enemy_run', true);
-                const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
-                enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
-           // } else {
-                enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
-           // }*/
-
+            enemyRun.anims.play('enemy_run', true);
+            const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
+            enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
         }
 
-        if (!this.isLightOn){
-            //if (distance < 300) {
-                enemyRun.anims.play('enemy_run', true);
-                const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
-                enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
-           // } else {
-                enemyRun.anims.play('enemy_idle', true); // Idle animation for enemy
-           // }
+        if (!this.isLightOn) {
+            enemyRun.anims.play('enemy_run', true);
+            const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
+            enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
         }
     
         if (distance <= 40) {
@@ -290,10 +275,10 @@ class GameScene extends Phaser.Scene {
             const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, cursor.x, cursor.y);
             const spotlightRadius = 40; // Set the radius for the spotlight
             const spotlight2Radius = 100;
-    
+
             this.spotlight.x = this.player.x + spotlightRadius * Math.cos(angle);
             this.spotlight.y = this.player.y + spotlightRadius * Math.sin(angle);
-    
+
             this.spotlight2.x = this.player.x + spotlight2Radius * Math.cos(angle - 0.2); // Slight offset for the second spotlight
             this.spotlight2.y = this.player.y + spotlight2Radius * Math.sin(angle - 0.2);
 
@@ -329,12 +314,12 @@ class GameScene extends Phaser.Scene {
 
     updateFlashlight() {
         if (this.isLightOn && this.energyLevel > 0) {
-            this.energyLevel -= 0.1; // Adjust as needed
+            this.energyLevel -= 0.1; // Ajuste conforme necessário
 
-            // Ensure energy doesn't go below 0
+            // Garanta que a energia não desça abaixo de 0
             this.energyLevel = Phaser.Math.Clamp(this.energyLevel, 0, 100);
 
-            // Flash warning when energy is low
+            // Flash de aviso quando a energia estiver baixa
             if (this.energyLevel <= 20 && this.energyLevel > 0) {
                 this.noBatteryText.setVisible(true);
                 this.startFlashing();
