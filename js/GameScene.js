@@ -33,7 +33,7 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-        //this.physics.world.createDebugGraphic();
+        this.physics.world.createDebugGraphic();
 
         const battery_number = 6;
         const enemy_speed = 75;
@@ -45,11 +45,12 @@ class GameScene extends Phaser.Scene {
 
         const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
+       // const walls = map.createLayer('Wall', tileset, 0, 0).setPipeline('Light2D');
         const walls = map.createLayer('Wall', tileset, 0, 0);
        // const door_open = map.createLayer('Door_Open', tileset, 0, 0);
         walls.setCollisionByExclusion([-1]);
 
-        walls.setTint(0x4f4e4d);
+        walls.setTint(0x171716);
 
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
 
@@ -444,7 +445,7 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    getValidPosition(map, walls) {
+   /* getValidPosition(map, walls) {
         let position;
         let isValidPosition = false;
 
@@ -457,6 +458,32 @@ class GameScene extends Phaser.Scene {
             if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
                 position = { x: x, y: y };
                 isValidPosition = true;
+            }
+        }
+        return position;
+    }*/
+
+    getValidPosition(map, walls, playerPosition = null, minDistance = 500) {
+        let position;
+        let isValidPosition = false;
+    
+        while (!isValidPosition) {
+            const x = Phaser.Math.Between(10, map.widthInPixels - 10);
+            const y = Phaser.Math.Between(10, map.heightInPixels - 10);
+    
+            const tile = walls.getTileAtWorldXY(x, y);
+    
+            if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
+                if (playerPosition) {
+                    const distance = Phaser.Math.Distance.Between(x, y, playerPosition.x, playerPosition.y);
+                    if (distance >= minDistance) {
+                        position = { x: x, y: y };
+                        isValidPosition = true;
+                    }
+                } else {
+                    position = { x: x, y: y };
+                    isValidPosition = true;
+                }
             }
         }
         return position;
@@ -487,6 +514,7 @@ class GameScene extends Phaser.Scene {
        if(this.allLeversActivated()){
             console.log("LEVERS ACTIVATED: FINISH");
             this.map.createLayer('Door_Open', this.tileset, 0, 0);
+
             this.door_light.setIntensity(5);
            // this.map.destroyLayer('Wall', this.tileset, 0, 0);
        } else {
