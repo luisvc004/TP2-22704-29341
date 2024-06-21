@@ -33,10 +33,10 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-        this.physics.world.createDebugGraphic();
+        //this.physics.world.createDebugGraphic();
 
         const battery_number = 6;
-        const enemy_speed = 70;
+        const enemy_speed = 75;
 
         const cursors = this.input.keyboard.createCursorKeys();
 
@@ -49,6 +49,8 @@ class GameScene extends Phaser.Scene {
        // const door_open = map.createLayer('Door_Open', tileset, 0, 0);
         walls.setCollisionByExclusion([-1]);
 
+        walls.setTint(0x4f4e4d);
+
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
 
         this.lights.enable();
@@ -58,11 +60,13 @@ class GameScene extends Phaser.Scene {
         let spotlight2 = this.lights.addLight(player.x, player.y, 90).setIntensity(3);
 
 
-        this.lights.addLight(430, 25, 70).setIntensity(1);
-        this.lights.addLight(530, 25, 70).setIntensity(1);
-        this.lights.addLight(310, 50, 70).setIntensity(1.5);
+        //this.lights.addLight(430, 25, 70).setIntensity(1);
+        //this.lights.addLight(530, 25, 70).setIntensity(1);
+        //this.lights.addLight(310, 50, 70).setIntensity(1.5);
 
-        let default_spotlight = this.lights.addLight(player.x, player.y, 30).setIntensity(1.5);
+        let door_light = this.lights.addLight(475, 35, 90);
+
+        let default_spotlight = this.lights.addLight(player.x, player.y, 65);
 
 
         const enemyPosition = this.getValidPosition(map, walls);
@@ -195,11 +199,12 @@ class GameScene extends Phaser.Scene {
         this.map = map;
         this.tileset = tileset;
         this.enemy_speed = enemy_speed;
+        this.door_light = door_light;
         this.startCountdown();
     }
 
     update() {
-        const { cursors, player, toggleLightKey, spotlight, spotlight2, default_spotlight, enemyRun, enemy_speed } = this;
+        const { cursors, player, toggleLightKey, spotlight, spotlight2, default_spotlight,door_light, enemyRun, enemy_speed } = this;
 
         if (!this.gameStarted) {
             return;
@@ -217,14 +222,17 @@ class GameScene extends Phaser.Scene {
 
 
         player.setVelocity(0);
+
+        //this.default_spotlight = this.lights.addLight(player.x, player.y, 100).setIntensity(5);
+
         let velocityX = 0;
         let velocityY = 0;
 
         if (cursors.left.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) {
-            velocityX = -50;
+            velocityX = -70;
             player.setFlipX(true);
         } else if (cursors.right.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
-            velocityX = 50;
+            velocityX = 70;
             player.setFlipX(false);
         }
 
@@ -235,9 +243,9 @@ class GameScene extends Phaser.Scene {
         }
 
         if (cursors.up.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) {
-            velocityY = -110;
+            velocityY = -70;
         } else if (cursors.down.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) {
-            velocityY = 110;
+            velocityY = 70;
         }
 
         player.setVelocityX(velocityX);
@@ -284,6 +292,8 @@ class GameScene extends Phaser.Scene {
         this.energyMaskGraphics.x = this.energyBar.x;
         this.energyMaskGraphics.y = this.energyBar.y;
 
+
+
         this.updateSpotlights();
 
         // Check if player is near any lever and 'E' key is pressed
@@ -296,10 +306,6 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Check if all levers are activated and player is at the center
-      /*  if (this.allLeversActivated() && this.isPlayerAtCenter()) {
-            this.handleVictory();
-        }*/
 
         if (this.allLeversActivated() && this.isPlayerAtDoor()) {
             this.handleVictory();
@@ -338,13 +344,19 @@ class GameScene extends Phaser.Scene {
 
             this.spotlight.setVisible(true);
             this.spotlight2.setVisible(true);
-
-          /*  this.default_spotlight.x = this.player.x;
-            this.default_spotlight.y = this.player.y;*/
+            this.default_spotlight.setIntensity(0);
+            this.player.clearTint();
+            
 
         } else {
             this.spotlight.setVisible(false);
             this.spotlight2.setVisible(false);
+
+            this.default_spotlight.x = this.player.x;
+            this.default_spotlight.y = this.player.y;
+            this.default_spotlight.setIntensity(1.5);
+            this.player.setTint(0x000000);
+
         }
 
  
@@ -374,7 +386,7 @@ class GameScene extends Phaser.Scene {
 
     updateFlashlight() {
         if (this.isLightOn && this.energyLevel > 0) {
-            this.energyLevel -= 0.03; // Ajuste conforme necessário
+            this.energyLevel -= 0.04; // Ajuste conforme necessário
 
             // Garanta que a energia não desça abaixo de 0
             this.energyLevel = Phaser.Math.Clamp(this.energyLevel, 0, 100);
@@ -475,6 +487,7 @@ class GameScene extends Phaser.Scene {
        if(this.allLeversActivated()){
             console.log("LEVERS ACTIVATED: FINISH");
             this.map.createLayer('Door_Open', this.tileset, 0, 0);
+            this.door_light.setIntensity(5);
            // this.map.destroyLayer('Wall', this.tileset, 0, 0);
        } else {
             console.log("Dor is closed, search for the LEVERS");
@@ -482,13 +495,14 @@ class GameScene extends Phaser.Scene {
         const tolerance = 50;
         return Phaser.Math.Distance.Between(this.player.x, this.player.y , 435, 25) <= tolerance;
     }
-
-
+    
     //modificar tela de vitoria
     handleVictory() {
         if (this.backgroundSound) {
             this.backgroundSound.stop();
         }
+
+        //mostrar tela de saída 
 
         //const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         //const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
