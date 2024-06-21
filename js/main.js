@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import MainMenu from './MainMenu';
 import GameScene from './GameScene.js';
 import GameOver from './GameOver.js';
+import GameWin from './GameWin.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -15,7 +16,7 @@ const config = {
             debug: false
         }
     },
-    scene: [MainMenu, InstructionsScene, GameScene, GameOver],
+    scene: [MainMenu, InstructionsScene, GameScene, GameWin, GameOver],
     callbacks: {
         postBoot: function (game) {
             game.canvas.style.cursor = 'none';
