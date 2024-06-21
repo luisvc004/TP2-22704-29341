@@ -54,7 +54,7 @@ class InstructionsScene extends Phaser.Scene {
 
                 const pointer = this.add.image(width - 220, height / 2 + 100, 'pointer').setOrigin(0.5).setScale(0.05); // Smaller pointer image
 
-                const clickInstruction = this.add.text(50, height / 2 + 220, 'Click to recharge the flashlight battery:', {
+                const clickInstruction = this.add.text(50, height / 2 + 220, 'Click to interact with the environment:', {
                     fontSize: '24px',
                     fill: '#FFFFFF',
                     align: 'left',

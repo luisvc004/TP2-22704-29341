@@ -50,12 +50,12 @@ class GameScene extends Phaser.Scene {
 
         const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
-       // const walls = map.createLayer('Wall', tileset, 0, 0).setPipeline('Light2D');
+        // const walls = map.createLayer('Wall', tileset, 0, 0).setPipeline('Light2D');
         const walls = map.createLayer('Wall', tileset, 0, 0);
-       // const door_open = map.createLayer('Door_Open', tileset, 0, 0);
+        // const door_open = map.createLayer('Door_Open', tileset, 0, 0);
         walls.setCollisionByExclusion([-1]);
 
-        walls.setTint(0x171716);
+        walls.setTint(0x3b3a39);
 
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
 
@@ -65,15 +65,22 @@ class GameScene extends Phaser.Scene {
         let spotlight = this.lights.addLight(player.x, player.y, 60).setIntensity(4);
         let spotlight2 = this.lights.addLight(player.x, player.y, 90).setIntensity(3);
 
-
         //this.lights.addLight(430, 25, 70).setIntensity(1);
         //this.lights.addLight(530, 25, 70).setIntensity(1);
         //this.lights.addLight(310, 50, 70).setIntensity(1.5);
 
+        // Add the lever instructions text
+        this.leverInstructionsText = this.add.text(this.sys.game.config.width - 20, 20, '', {
+            fontSize: '18px',
+            fill: '#ffffff',
+            align: 'right'
+        }).setOrigin(1, 0);
+
+        this.activatedLevers = 0; // Initialize the activated levers count
+
         let door_light = this.lights.addLight(485, 35, 90);
 
         let default_spotlight = this.lights.addLight(player.x, player.y, 65);
-
 
         const enemyPosition = this.getValidPosition(map, walls);
 
@@ -213,7 +220,7 @@ class GameScene extends Phaser.Scene {
     }
 
     update() {
-        const { cursors, player, toggleLightKey, spotlight, spotlight2, default_spotlight,door_light, enemyRun, enemy_speed } = this;
+        const { cursors, player, toggleLightKey, spotlight, spotlight2, default_spotlight, door_light, enemyRun, enemy_speed } = this;
 
         if (!this.gameStarted) {
             return;
@@ -229,7 +236,6 @@ class GameScene extends Phaser.Scene {
             this.updateSpotlights();
         }
 
-
         player.setVelocity(0);
 
         //this.default_spotlight = this.lights.addLight(player.x, player.y, 100).setIntensity(5);
@@ -240,7 +246,6 @@ class GameScene extends Phaser.Scene {
         if (cursors.left.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) {
             velocityX = -70;
             player.setFlipX(true);
-            
         } else if (cursors.right.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
             velocityX = 70;
             player.setFlipX(false);
@@ -276,7 +281,7 @@ class GameScene extends Phaser.Scene {
             this.player.y
         );
 
-        if (this.isLightOn && this.energyLevel > 0 && (enemyRun.getBounds().contains(spotlight.x, spotlight.y) || enemyRun.getBounds().contains(spotlight2.x, spotlight2.y))) {
+        if (this.isLightOn && this.energyLevel > 0 && (enemyRun.getBounds().contains(spotlight.x, spotlight.y) || enemyRun.getBounds().contains(spotlight2.x, spotlight.y))) {
             enemyRun.setVelocity(0, 0);
             enemyRun.anims.play('enemy_idle', true);
         } else {
@@ -301,23 +306,23 @@ class GameScene extends Phaser.Scene {
         this.energyMaskGraphics.x = this.energyBar.x;
         this.energyMaskGraphics.y = this.energyBar.y;
 
-
-
         this.updateSpotlights();
 
         // Check if player is near any lever and 'E' key is pressed
         this.levers.forEach(lever => {
             if (Phaser.Math.Distance.Between(player.x, player.y, lever.x, lever.y) <= 50) {
                 if (Phaser.Input.Keyboard.JustDown(this.eKey) && !lever.clicked) {
-                    lever.flipX = !lever.flipX; // Inverte a imagem em Y
-                    lever.clicked = true; // Marque a alavanca como clicada
+                    lever.flipX = !lever.flipX; // Invert the image in Y
+                    lever.clicked = true; // Mark the lever as clicked
+                    this.activatedLevers++; // Increment the activated levers count
+                    this.updateLeverInstructions(); // Update the lever instructions
                 }
             }
         });
 
-        if(this.isPlayerAtDoor()){
-            
-            if(enemyRun.getBounds().contains(door_light.x, door_light.y) <= 100){
+        if (this.isPlayerAtDoor()) {
+
+            if (enemyRun.getBounds().contains(door_light.x, door_light.y) <= 100) {
                 enemyRun.setVelocity(0, 0);
             }
 
@@ -327,23 +332,29 @@ class GameScene extends Phaser.Scene {
         if (this.allLeversActivated() && this.isPlayerAtDoor()) {
             this.handleVictory();
         }
-        
+
     }
 
     createLever(x, y, angle) {
         const lever = this.physics.add.sprite(x, y, 'lever').setScale(0.03).setInteractive();
         lever.setOrigin(0.5, 0.5);
         lever.angle = angle;
-        lever.clicked = false; // Adicione a propriedade clicked
+        lever.clicked = false; // Add the clicked property
 
         lever.on('pointerdown', () => {
             if (!lever.clicked) {
-                lever.flipX = !lever.flipX; // Inverte a imagem em Y
-                lever.clicked = true; // Marque a alavanca como clicada
+                lever.flipX = !lever.flipX; // Invert the image in Y
+                lever.clicked = true; // Mark the lever as clicked
+                this.activatedLevers++; // Increment the activated levers count
+                this.updateLeverInstructions(); // Update the lever instructions
             }
         });
-    
+
         return lever;
+    }
+
+    updateLeverInstructions() {
+        this.leverInstructionsText.setText(`Activated Levers: ${this.activatedLevers}/4`);
     }
 
     updateSpotlights() {
@@ -363,7 +374,6 @@ class GameScene extends Phaser.Scene {
             this.spotlight2.setVisible(true);
             this.default_spotlight.setIntensity(0);
             this.player.clearTint();
-            
 
         } else {
             this.spotlight.setVisible(false);
@@ -376,7 +386,6 @@ class GameScene extends Phaser.Scene {
 
         }
 
- 
     }
 
     startCountdown() {
@@ -386,7 +395,7 @@ class GameScene extends Phaser.Scene {
 
         let countdown = 3;
         const countdownTimer = this.time.addEvent({
-            delay: 1000, // 1 segundo
+            delay: 1000, // 1 second
             callback: () => {
                 countdown--;
                 countdownText.setText(countdown);
@@ -394,6 +403,9 @@ class GameScene extends Phaser.Scene {
                     countdownTimer.remove();
                     countdownText.destroy();
                     this.gameStarted = true; // Unlock the game
+
+                    // Show the lever instructions
+                    this.leverInstructionsText.setText('Find the 4 levers to pass the level');
                 }
             },
             callbackScope: this,
@@ -403,23 +415,23 @@ class GameScene extends Phaser.Scene {
 
     updateFlashlight() {
         if (this.isLightOn && this.energyLevel > 0) {
-            this.energyLevel -= 0.04; // Ajuste conforme necessário
+            this.energyLevel -= 0.04; // Adjust as needed
 
-            // Garanta que a energia não desça abaixo de 0
+            // Ensure the energy does not drop below 0
             this.energyLevel = Phaser.Math.Clamp(this.energyLevel, 0, 100);
 
-            // Flash de aviso quando a energia estiver baixa
+            // Warning flash when energy is low
             if (this.energyLevel <= 20 && this.energyLevel > 0) {
                 this.noBatteryText.setVisible(true);
-              //  this.startFlashing();
+                //  this.startFlashing();
             } else {
                 this.noBatteryText.setVisible(false);
-              //  this.stopFlashing();
+                //  this.stopFlashing();
             }
         } else {
             this.isLightOn = false;
             this.noBatteryText.setVisible(false);
-           // this.stopFlashing();
+            // this.stopFlashing();
         }
     }
 
@@ -447,21 +459,21 @@ class GameScene extends Phaser.Scene {
         this.spotlight.visible = true; // Ensure spotlight is visible if not flashing
         this.spotlight2.visible = true; // Ensure spotlight2 is visible if not flashing
     }
-
+    
     collectBattery(battery) {
         if (Phaser.Math.Distance.Between(this.player.x, this.player.y, battery.x, battery.y) <= 50) {
-            this.energyLevel = 100; // Restaura a energia completa quando o jogador clica na bateria
+            this.energyLevel = 100; // Restore full energy when the player clicks the battery
             this.initialEnergyLevel = 100;
-            battery.destroy(); // Remove a bateria do jogo
-            this.updateEnergyBar(); // Atualiza a visualização da barra de energia
+            battery.destroy(); // Remove the battery from the game
+            this.updateEnergyBar(); // Update the energy bar visualization
             if (this.energyLevel > 20) {
-                this.noBatteryText.setVisible(false); // Se a energia subir acima de 20%, esconde o texto de aviso
-                this.noBatteryTween.stop(0); // E para a animação de piscar
+                this.noBatteryText.setVisible(false); // If energy rises above 20%, hide the warning text
+                this.noBatteryTween.stop(0); // And stop the flashing animation
             }
         }
     }
 
-   /* getValidPosition(map, walls) {
+    /* getValidPosition(map, walls) {
         let position;
         let isValidPosition = false;
 
@@ -482,13 +494,13 @@ class GameScene extends Phaser.Scene {
     getValidPosition(map, walls, playerPosition = null, minDistance = 500) {
         let position;
         let isValidPosition = false;
-    
+
         while (!isValidPosition) {
             const x = Phaser.Math.Between(10, map.widthInPixels - 10);
             const y = Phaser.Math.Between(10, map.heightInPixels - 10);
-    
+
             const tile = walls.getTileAtWorldXY(x, y);
-    
+
             if (!tile && x > 0 && x < map.widthInPixels && y > 0 && y < map.heightInPixels) {
                 if (playerPosition) {
                     const distance = Phaser.Math.Distance.Between(x, y, playerPosition.x, playerPosition.y);
@@ -519,28 +531,26 @@ class GameScene extends Phaser.Scene {
         return this.levers.every(lever => lever.clicked);
     }
 
-    
-  /*  this.lights.addLight(430, 25, 70).setIntensity(1);
+    /*  this.lights.addLight(430, 25, 70).setIntensity(1);
     this.lights.addLight(530, 25, 70).setIntensity(1);
     this.lights.addLight(310, 50, 70).setIntensity(1.5);*/
 
     isPlayerAtDoor() {
-       // const centerX = this.sys.game.config.width / 2;
-       // const centerY = this.sys.game.config.height / 2;
-       if(this.allLeversActivated()){
+        // const centerX = this.sys.game.config.width / 2;
+        // const centerY = this.sys.game.config.height / 2;
+        if (this.allLeversActivated()) {
             console.log("LEVERS ACTIVATED: FINISH");
             this.map.createLayer('Door_Open', this.tileset, 0, 0);
 
             this.door_light.setIntensity(5);
-           // this.map.destroyLayer('Wall', this.tileset, 0, 0);
-       } else {
+            // this.map.destroyLayer('Wall', this.tileset, 0, 0);
+        } else {
             console.log("Dor is closed, search for the LEVERS");
-       }
-        const tolerance = 100;  // area de interação
-        return Phaser.Math.Distance.Between(this.player.x, this.player.y , 435, 25) <= tolerance;
+        }
+        const tolerance = 100;  // area of interaction
+        return Phaser.Math.Distance.Between(this.player.x, this.player.y, 435, 25) <= tolerance;
     }
-    
-    //modificar tela de vitoria
+
     handleVictory() {
         if (this.backgroundSound) {
             this.backgroundSound.stop();
@@ -550,27 +560,27 @@ class GameScene extends Phaser.Scene {
 
         this.scene.start('GameWin');
 
-        //mostrar tela de saída 
+        // Show the exit screen
 
         //const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         //const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
         //const walls = map.createLayer('Wall', tileset, 0, 0);
         //console.log("WIN");
-    
+
         // Create a white background
-      /*  const graphics = this.add.graphics();
-        graphics.fillStyle(0xffffff, 1);
-        graphics.fillRect(0, 0, this.sys.game.config.width, this.sys.game.config.height);
-    
-        // Add the victory text
-        const victoryText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, 'EZ WIN', {
-            font: '64px Arial',
-            fill: '#000000',
-            align: 'center'
-        }).setOrigin(0.5);
-    
-        // Pause the game physics
-        this.physics.pause();*/
+        /*  const graphics = this.add.graphics();
+          graphics.fillStyle(0xffffff, 1);
+          graphics.fillRect(0, 0, this.sys.game.config.width, this.sys.game.config.height);
+      
+          // Add the victory text
+          const victoryText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, 'EZ WIN', {
+              font: '64px Arial',
+              fill: '#000000',
+              align: 'center'
+          }).setOrigin(0.5);
+      
+          // Pause the game physics
+          this.physics.pause();*/
     }
 }
 
