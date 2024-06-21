@@ -7,7 +7,7 @@ class GameScene extends Phaser.Scene {
         this.load.image('tileset', 'assets/tileset.png');
         this.load.image('battery', 'assets/battery.png');
         this.load.image('lever', 'assets/lever/lever.png');
-        this.load.image('victory', 'assets/victory.png'); // Load the victory image
+        //this.load.image('victory', 'assets/victory.png'); // Load the victory image
 
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
 
@@ -17,6 +17,7 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
 
         this.load.audio('start_sound', 'assets/horror-background-atmosphere.mp3');
+        this.load.audio('game_win_sound', 'assets/success-fanfare-trumpets.mp3');
         this.load.audio('game_over_sound', 'assets/jump-scare-sound.mp3');
     }
 
@@ -33,7 +34,7 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-        this.physics.world.createDebugGraphic();
+        //this.physics.world.createDebugGraphic();
 
         const battery_number = 6;
         const enemy_speed = 75;
@@ -529,13 +530,17 @@ class GameScene extends Phaser.Scene {
         if (this.backgroundSound) {
             this.backgroundSound.stop();
         }
+        this.gameOverSound = this.sound.add('game_win_sound');
+        this.gameOverSound.play();
+
+        this.scene.start('GameWin');
 
         //mostrar tela de saída 
 
         //const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         //const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
         //const walls = map.createLayer('Wall', tileset, 0, 0);
-        console.log("WIN");
+        //console.log("WIN");
     
         // Create a white background
       /*  const graphics = this.add.graphics();
