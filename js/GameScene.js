@@ -18,6 +18,8 @@ class GameScene extends Phaser.Scene {
 
         this.load.audio('start_sound', 'assets/horror-background-atmosphere.mp3');
         this.load.audio('game_over_sound', 'assets/jump-scare-sound.mp3');
+
+        this.load.audio('walk_sound', 'assets/walk.mp3');
     }
 
     init(data) {
@@ -34,6 +36,8 @@ class GameScene extends Phaser.Scene {
         // Initial game setup
 
         this.physics.world.createDebugGraphic();
+
+        const walkSound = this.sound.add('walk_sound', { loop: true });
 
         const battery_number = 6;
         const enemy_speed = 75;
@@ -65,7 +69,7 @@ class GameScene extends Phaser.Scene {
         //this.lights.addLight(530, 25, 70).setIntensity(1);
         //this.lights.addLight(310, 50, 70).setIntensity(1.5);
 
-        let door_light = this.lights.addLight(475, 35, 90);
+        let door_light = this.lights.addLight(485, 35, 90);
 
         let default_spotlight = this.lights.addLight(player.x, player.y, 65);
 
@@ -201,6 +205,9 @@ class GameScene extends Phaser.Scene {
         this.tileset = tileset;
         this.enemy_speed = enemy_speed;
         this.door_light = door_light;
+
+        this.walkSound = walkSound;
+
         this.startCountdown();
     }
 
@@ -232,15 +239,10 @@ class GameScene extends Phaser.Scene {
         if (cursors.left.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) {
             velocityX = -70;
             player.setFlipX(true);
+            
         } else if (cursors.right.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
             velocityX = 70;
             player.setFlipX(false);
-        }
-
-        if (this.enemyRun.x > player.x) {
-            this.enemyRun.setFlipX(true);
-        } else {
-            this.enemyRun.setFlipX(false);
         }
 
         if (cursors.up.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) {
@@ -249,6 +251,11 @@ class GameScene extends Phaser.Scene {
             velocityY = 70;
         }
 
+        if (this.enemyRun.x > player.x) {
+            this.enemyRun.setFlipX(true);
+        } else {
+            this.enemyRun.setFlipX(false);
+        }
         player.setVelocityX(velocityX);
         player.setVelocityY(velocityY);
 
@@ -307,6 +314,14 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        if(this.isPlayerAtDoor()){
+            
+            if(enemyRun.getBounds().contains(door_light.x, door_light.y) <= 100){
+                enemyRun.setVelocity(0, 0);
+            }
+
+            this.player.clearTint();
+        }
 
         if (this.allLeversActivated() && this.isPlayerAtDoor()) {
             this.handleVictory();
@@ -520,7 +535,7 @@ class GameScene extends Phaser.Scene {
        } else {
             console.log("Dor is closed, search for the LEVERS");
        }
-        const tolerance = 50;
+        const tolerance = 100;  // area de interação
         return Phaser.Math.Distance.Between(this.player.x, this.player.y , 435, 25) <= tolerance;
     }
     
