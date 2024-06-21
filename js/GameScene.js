@@ -6,12 +6,13 @@ class GameScene extends Phaser.Scene {
     preload() {
         this.load.image('tileset', 'assets/tileset.png');
         this.load.image('battery', 'assets/battery.png');
-        // this.load.image('flashlight', 'assets/flashlights.png');
+        this.load.image('lever', 'assets/lever/lever.png');
+        this.load.image('victory', 'assets/victory.png'); // Load the victory image
 
         this.load.tilemapTiledJSON('map', 'assets/levels/tileset.json');
-        
+
         this.load.spritesheet('player', 'assets/red_player.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('enemy_run','assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
+        this.load.spritesheet('enemy_run', 'assets/enemy1/run.png', { frameWidth: 40, frameHeight: 39 });
         this.load.spritesheet('enemy_attack', 'assets/enemy1/attack.png', { frameWidth: 126, frameHeight: 39 });
         this.load.spritesheet('enemy_idle', 'assets/enemy1/idle.png', { frameWidth: 40, frameHeight: 39 });
 
@@ -32,9 +33,10 @@ class GameScene extends Phaser.Scene {
     create(data) {
         // Initial game setup
 
-       // this.physics.world.createDebugGraphic();
+        this.physics.world.createDebugGraphic();
 
-        const battery_number = 8;
+        const battery_number = 6;
+        const enemy_speed = 70;
 
         const cursors = this.input.keyboard.createCursorKeys();
 
@@ -44,26 +46,28 @@ class GameScene extends Phaser.Scene {
         const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
         const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
         const walls = map.createLayer('Wall', tileset, 0, 0);
+       // const door_open = map.createLayer('Door_Open', tileset, 0, 0);
         walls.setCollisionByExclusion([-1]);
 
         const player = this.physics.add.sprite(400, 300, 'player').setScale(1.3).setCollideWorldBounds(true);
-        
+
         this.lights.enable();
-        // this.lights.setAmbientColor(0x212020);
-         this.lights.setAmbientColor(0x000000);
+        this.lights.setAmbientColor(0x000000);
 
         let spotlight = this.lights.addLight(player.x, player.y, 60).setIntensity(4);
         let spotlight2 = this.lights.addLight(player.x, player.y, 90).setIntensity(3);
 
-        let pl
 
         this.lights.addLight(430, 25, 70).setIntensity(1);
         this.lights.addLight(530, 25, 70).setIntensity(1);
         this.lights.addLight(310, 50, 70).setIntensity(1.5);
 
+        let default_spotlight = this.lights.addLight(player.x, player.y, 30).setIntensity(1.5);
+
+
         const enemyPosition = this.getValidPosition(map, walls);
-        
-        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run','enemy_attack']).setScale(1.6).setPipeline('Light2D');
+
+        const enemyRun = this.physics.add.sprite(enemyPosition.x, enemyPosition.y, ['enemy_run', 'enemy_attack']).setScale(1.6).setPipeline('Light2D');
         enemyRun.setInteractive();
 
         const batteries = this.physics.add.group();
@@ -78,91 +82,99 @@ class GameScene extends Phaser.Scene {
             battery.on('pointerout', () => battery.setScale(0.055));
         }
 
+        // Add the lever images
+        const lever1 = this.createLever(50, 50, 90);
+        lever1.setPipeline('Light2D');
+        const lever2 = this.createLever(this.cameras.main.width - 50, 50, 180);
+        lever2.setPipeline('Light2D');
+        const lever3 = this.createLever(50, this.cameras.main.height - 50, 90);
+        lever3.setPipeline('Light2D');
+        const lever4 = this.createLever(this.cameras.main.width - 50, this.cameras.main.height - 50, 270);
+        lever4.setPipeline('Light2D');
+
+        this.levers = [lever1, lever2, lever3, lever4];
+
+        const eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
         this.cursors = cursors;
         this.physics.add.collider(player, walls);
         this.physics.add.collider(enemyRun, walls);
         this.physics.add.overlap(enemyRun, player, () => {
             // this.enemyRun.anims.play('enemy_attack'); // nao ta a dar
         });
-        
+
         const toggleLightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
-        
-        // const flashlight = this.add.graphics();
-        
+
         if (!this.anims.exists('player_run')) {
-            this.anims.create({ 
-                key: 'player_run', 
-                frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }), 
-                frameRate: 7, 
-                repeat: -1 
+            this.anims.create({
+                key: 'player_run',
+                frames: this.anims.generateFrameNumbers('player', { start: 24, end: 31 }),
+                frameRate: 7,
+                repeat: -1
             });
         }
 
         if (!this.anims.exists('player_idle')) {
-            this.anims.create({ 
-                key: 'player_idle', 
-                frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }), 
-                frameRate: 4, 
-                repeat: -1 
+            this.anims.create({
+                key: 'player_idle',
+                frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 8, 9] }),
+                frameRate: 4,
+                repeat: -1
             });
         }
 
         if (!this.anims.exists('enemy_run')) {
-            this.anims.create({ 
-                key: 'enemy_run', 
-                frames: this.anims.generateFrameNumbers('enemy_run', { frames: [1, 4, 7, 10, 13, 16, 19] }), 
-                frameRate: 7, 
-                repeat: -1 
+            this.anims.create({
+                key: 'enemy_run',
+                frames: this.anims.generateFrameNumbers('enemy_run', { frames: [1, 4, 7, 10, 13, 16, 19] }),
+                frameRate: 7,
+                repeat: -1
             });
         }
 
         if (!this.anims.exists('enemy_idle')) {
-            this.anims.create({ 
-                key: 'enemy_idle', 
-                frames: this.anims.generateFrameNumbers('enemy_idle', { frames: [1, 4, 7, 10] }), 
-                frameRate: 10, 
-                repeat: -1 
+            this.anims.create({
+                key: 'enemy_idle',
+                frames: this.anims.generateFrameNumbers('enemy_idle', { frames: [1, 4, 7, 10] }),
+                frameRate: 10,
+                repeat: -1
             });
         }
 
-        if (!this.anims.exists('enemy_attack')) {
-            this.anims.create({ 
-                key: 'enemy_attack', 
-                frames: this.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 7}), 
-                frameRate: 7, 
-                repeat: -1 
-            });
-        }
+        this.anims.create({
+            key: 'enemy_attack',
+            frames: this.anims.generateFrameNumbers('enemy_attack', { start: 0, end: 7 }),
+            frameRate: 7,
+            repeat: -1
+        });
 
         player.anims.play('player_idle');
         enemyRun.anims.play('enemy_run');
 
         const energyBar = this.add.graphics().fillStyle(0xffffff).fillRect(player.x - 25, player.y - 30, 50, 5);
-        
+
         const energyMaskGraphics = this.make.graphics().fillStyle(0x000000).fillRect(player.x - 25, player.y - 30, 50, 5);
-        
+
         const energyMask = energyMaskGraphics.createGeometryMask();
-        
+
         energyBar.setMask(energyMask);
 
         const noBatteryText = this.add.text(50, 50, 'Low Battery', {
             font: '18px Arial',
             fill: '#ff0000',
-            align: 'left' 
+            align: 'left'
         }).setVisible(false);
-        
-        const noBatteryTween = this.tweens.add({ 
-            targets: noBatteryText, 
-            alpha: 0, 
-            duration: 500, 
-            ease: 'Linear', 
-            yoyo: true, 
-            repeat: -1 
+
+        const noBatteryTween = this.tweens.add({
+            targets: noBatteryText,
+            alpha: 0,
+            duration: 500,
+            ease: 'Linear',
+            yoyo: true,
+            repeat: -1
         }).stop();
 
         this.player = player;
-        // this.enemyRun = enemyRun;
-        // this.flashlight = flashlight;
         this.energyBar = energyBar;
         this.energyMaskGraphics = energyMaskGraphics;
         this.energyMask = energyMask;
@@ -177,13 +189,18 @@ class GameScene extends Phaser.Scene {
         this.batteries = batteries;
         this.spotlight = spotlight;
         this.spotlight2 = spotlight2;
+        this.default_spotlight = default_spotlight;
         this.enemyRun = enemyRun;
+        this.eKey = eKey;
+        this.map = map;
+        this.tileset = tileset;
+        this.enemy_speed = enemy_speed;
         this.startCountdown();
     }
 
     update() {
-        const { cursors, player, toggleLightKey, spotlight, spotlight2, enemyRun } = this;
-      
+        const { cursors, player, toggleLightKey, spotlight, spotlight2, default_spotlight, enemyRun, enemy_speed } = this;
+
         if (!this.gameStarted) {
             return;
         }
@@ -197,54 +214,51 @@ class GameScene extends Phaser.Scene {
             }
             this.updateSpotlights();
         }
-    
+
+
         player.setVelocity(0);
         let velocityX = 0;
         let velocityY = 0;
-    
+
         if (cursors.left.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown) {
-            velocityX = -110;
+            velocityX = -50;
             player.setFlipX(true);
-        } 
-        else if (cursors.right.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
-            velocityX = 110;
+        } else if (cursors.right.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown) {
+            velocityX = 50;
             player.setFlipX(false);
         }
-    
-        if(this.enemyRun.x > player.x) {
+
+        if (this.enemyRun.x > player.x) {
             this.enemyRun.setFlipX(true);
         } else {
             this.enemyRun.setFlipX(false);
         }
-    
+
         if (cursors.up.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W).isDown) {
             velocityY = -110;
-        } 
-        else if (cursors.down.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) {
+        } else if (cursors.down.isDown || this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S).isDown) {
             velocityY = 110;
         }
-    
+
         player.setVelocityX(velocityX);
         player.setVelocityY(velocityY);
-    
+
         if (velocityX !== 0 || velocityY !== 0) {
             player.anims.play('player_run', true);
         } else {
             player.anims.play('player_idle', true);
         }
-    
+
         this.updateEnergyBar();
         this.updateFlashlight();
-    
+
         const distance = Phaser.Math.Distance.Between(
             this.enemyRun.x,
             this.enemyRun.y,
             this.player.x,
             this.player.y
         );
-    
-        const enemy_speed = 60; // Define enemy speed here
-    
+
         if (this.isLightOn && this.energyLevel > 0 && (enemyRun.getBounds().contains(spotlight.x, spotlight.y) || enemyRun.getBounds().contains(spotlight2.x, spotlight2.y))) {
             enemyRun.setVelocity(0, 0);
             enemyRun.anims.play('enemy_idle', true);
@@ -259,8 +273,8 @@ class GameScene extends Phaser.Scene {
             const angle = Phaser.Math.Angle.Between(enemyRun.x, enemyRun.y, player.x, player.y);
             enemyRun.setVelocity(Math.cos(angle) * enemy_speed, Math.sin(angle) * enemy_speed);
         }
-    
-        if (distance <= 40) {
+
+        if (distance <= 40 && this.physics.add.overlap(enemyRun, player)) {
             this.handleGameOver();
         }
 
@@ -271,6 +285,42 @@ class GameScene extends Phaser.Scene {
         this.energyMaskGraphics.y = this.energyBar.y;
 
         this.updateSpotlights();
+
+        // Check if player is near any lever and 'E' key is pressed
+        this.levers.forEach(lever => {
+            if (Phaser.Math.Distance.Between(player.x, player.y, lever.x, lever.y) <= 50) {
+                if (Phaser.Input.Keyboard.JustDown(this.eKey) && !lever.clicked) {
+                    lever.flipX = !lever.flipX; // Inverte a imagem em Y
+                    lever.clicked = true; // Marque a alavanca como clicada
+                }
+            }
+        });
+
+        // Check if all levers are activated and player is at the center
+      /*  if (this.allLeversActivated() && this.isPlayerAtCenter()) {
+            this.handleVictory();
+        }*/
+
+        if (this.allLeversActivated() && this.isPlayerAtDoor()) {
+            this.handleVictory();
+        }
+        
+    }
+
+    createLever(x, y, angle) {
+        const lever = this.physics.add.sprite(x, y, 'lever').setScale(0.03).setInteractive();
+        lever.setOrigin(0.5, 0.5);
+        lever.angle = angle;
+        lever.clicked = false; // Adicione a propriedade clicked
+
+        lever.on('pointerdown', () => {
+            if (!lever.clicked) {
+                lever.flipX = !lever.flipX; // Inverte a imagem em Y
+                lever.clicked = true; // Marque a alavanca como clicada
+            }
+        });
+    
+        return lever;
     }
 
     updateSpotlights() {
@@ -288,10 +338,16 @@ class GameScene extends Phaser.Scene {
 
             this.spotlight.setVisible(true);
             this.spotlight2.setVisible(true);
+
+          /*  this.default_spotlight.x = this.player.x;
+            this.default_spotlight.y = this.player.y;*/
+
         } else {
             this.spotlight.setVisible(false);
             this.spotlight2.setVisible(false);
         }
+
+ 
     }
 
     startCountdown() {
@@ -318,7 +374,7 @@ class GameScene extends Phaser.Scene {
 
     updateFlashlight() {
         if (this.isLightOn && this.energyLevel > 0) {
-            this.energyLevel -= 0.1; // Ajuste conforme necessário
+            this.energyLevel -= 0.03; // Ajuste conforme necessário
 
             // Garanta que a energia não desça abaixo de 0
             this.energyLevel = Phaser.Math.Clamp(this.energyLevel, 0, 100);
@@ -326,15 +382,15 @@ class GameScene extends Phaser.Scene {
             // Flash de aviso quando a energia estiver baixa
             if (this.energyLevel <= 20 && this.energyLevel > 0) {
                 this.noBatteryText.setVisible(true);
-                this.startFlashing();
+              //  this.startFlashing();
             } else {
                 this.noBatteryText.setVisible(false);
-                this.stopFlashing();
+              //  this.stopFlashing();
             }
         } else {
             this.isLightOn = false;
             this.noBatteryText.setVisible(false);
-            this.stopFlashing();
+           // this.stopFlashing();
         }
     }
 
@@ -400,8 +456,59 @@ class GameScene extends Phaser.Scene {
         }
         this.gameOverSound = this.sound.add('game_over_sound');
         this.gameOverSound.play();
-        
+
         this.scene.start('GameOver');
+    }
+
+    allLeversActivated() {
+        return this.levers.every(lever => lever.clicked);
+    }
+
+    
+  /*  this.lights.addLight(430, 25, 70).setIntensity(1);
+    this.lights.addLight(530, 25, 70).setIntensity(1);
+    this.lights.addLight(310, 50, 70).setIntensity(1.5);*/
+
+    isPlayerAtDoor() {
+       // const centerX = this.sys.game.config.width / 2;
+       // const centerY = this.sys.game.config.height / 2;
+       if(this.allLeversActivated()){
+            console.log("LEVERS ACTIVATED: FINISH");
+            this.map.createLayer('Door_Open', this.tileset, 0, 0);
+           // this.map.destroyLayer('Wall', this.tileset, 0, 0);
+       } else {
+            console.log("Dor is closed, search for the LEVERS");
+       }
+        const tolerance = 50;
+        return Phaser.Math.Distance.Between(this.player.x, this.player.y , 435, 25) <= tolerance;
+    }
+
+
+    //modificar tela de vitoria
+    handleVictory() {
+        if (this.backgroundSound) {
+            this.backgroundSound.stop();
+        }
+
+        //const backgroundLayer = map.createLayer('Ground', tileset, 0, 0).setPipeline('Light2D');
+        //const furniture = map.createLayer('Furniture', tileset, 0, 0).setPipeline('Light2D');
+        //const walls = map.createLayer('Wall', tileset, 0, 0);
+        console.log("WIN");
+    
+        // Create a white background
+      /*  const graphics = this.add.graphics();
+        graphics.fillStyle(0xffffff, 1);
+        graphics.fillRect(0, 0, this.sys.game.config.width, this.sys.game.config.height);
+    
+        // Add the victory text
+        const victoryText = this.add.text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, 'EZ WIN', {
+            font: '64px Arial',
+            fill: '#000000',
+            align: 'center'
+        }).setOrigin(0.5);
+    
+        // Pause the game physics
+        this.physics.pause();*/
     }
 }
 
